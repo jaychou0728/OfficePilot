@@ -1271,6 +1271,8 @@ git commit -m "feat(db): add sqlite schema and migration"
 
 ### Task 7: 中文 bigram tokenizer
 
+> **执行状态（2026-10-25）**：已完成（提交 `7ff76d5` + `173ca09`）。最终实现先按 CJK/非 CJK 边界分段，避免 `650元` 被切成 `65 50 0元`；测试 4 个（含混合脚本与空查询）。以 `apps/server/src/rag/tokenize.ts` 为准。
+
 **Files:**
 - Create: `apps/server/src/rag/tokenize.ts`
 - Test: `apps/server/tests/tokenize.test.ts`
@@ -1290,6 +1292,17 @@ describe('tokenizeForFts', () => {
   it('builds an OR query', () => {
     expect(toFtsQuery('差旅 住宿')).toBe('"差旅" OR "住宿"');
   });
+
+  it('separates mixed script runs so numbers stay intact', () => {
+    expect(tokenizeForFts('650元')).toBe('650 元');
+    expect(tokenizeForFts('2024年')).toBe('2024 年');
+    expect(tokenizeForFts('Hello世界')).toBe('hello 世界');
+  });
+
+  it('returns an empty query for empty or punctuation-only input', () => {
+    expect(toFtsQuery('')).toBe('');
+    expect(toFtsQuery('，。！？')).toBe('');
+  });
 });
 ```
 
@@ -1306,20 +1319,24 @@ export function tokenizeForFts(text: string): string {
   const parts = text.replace(/[^\p{L}\p{N}]+/gu, ' ').split(/\s+/).filter(Boolean);
   const out: string[] = [];
   for (const part of parts) {
-    if (/[一-鿿]/.test(part)) {
-      const chars = Array.from(part);
-      if (chars.length === 1) out.push(chars[0]);
-      else for (let i = 0; i < chars.length - 1; i++) out.push(chars[i] + chars[i + 1]);
-    } else {
-      out.push(part.toLowerCase());
+    const segments = part.match(/[一-鿿]+|[^一-鿿]+/g) ?? [];
+    for (const segment of segments) {
+      if (/[一-鿿]/.test(segment)) {
+        const chars = Array.from(segment);
+        if (chars.length === 1) out.push(chars[0]);
+        else for (let i = 0; i < chars.length - 1; i++) out.push(chars[i] + chars[i + 1]);
+      } else {
+        out.push(segment.toLowerCase());
+      }
     }
   }
   return out.join(' ');
 }
 
+// Returns '' when there are no searchable tokens; callers must not pass '' to FTS5 MATCH.
 export function toFtsQuery(text: string): string {
   const tokens = tokenizeForFts(text).split(' ').filter(Boolean);
-  return tokens.map((t) => `"${t.replace(/"/g, '""')}"`).join(' OR ');
+  return tokens.map((token) => `"${token.replace(/"/g, '""')}"`).join(' OR ');
 }
 ```
 
@@ -1327,7 +1344,7 @@ export function toFtsQuery(text: string): string {
 
 Run: `npm test -- apps/server/tests/tokenize.test.ts`
 
-Expected: 2 passed。
+Expected: 4 passed。
 
 - [ ] **Step 5: 提交**
 
