@@ -2836,6 +2836,10 @@ git commit -m "feat(ingest): add serial queue and document service"
 
 # Phase 4 · 检索与校验
 
+> **Phase 4 完成（2026-10-25）**：Tasks 20–23 已实现并审查。提交 vector `0df1082`、hybrid `19cdf94`、citations `b2d3a68`/`232bf9a`/`b8e5156`、summarize `7f6d352`。全量测试 130 passed，typecheck 0。
+> 关键加固：稳定 top-k、bm25 仅对候选归一化、整词/日期/全角/负数/覆盖率引用校验、摘要批大小与空文本处理。
+> **Phase 5 集成要求**：Task 26 要把所有已打分 chunk（不只 top-k）传入 `hybridRank`，并按 `docIds` 过滤 FTS，否则 FTS 命中无法进入候选；检索前校验 query 向量维度与 `app_meta.embedding_dim`；Task 28 用 `validation.coverage` 计算置信度，而不是 `ok ? 1 : 0`；摘要使用 `mapReduceSummary`。
+
 ### Task 20: 向量检索
 
 **Files:**
