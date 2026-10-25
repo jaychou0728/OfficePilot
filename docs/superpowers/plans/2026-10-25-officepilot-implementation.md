@@ -594,7 +594,7 @@ Expected: FAIL，`buildApp` 不存在。
   "dependencies": {
     "@fastify/cors": "^10.0.1",
     "@fastify/multipart": "^9.0.1",
-    "@fastify/static": "^8.0.3",
+    "@fastify/static": "^9.3.0",
     "@fastify/swagger": "^9.4.0",
     "@fastify/swagger-ui": "^5.2.0",
     "@langchain/langgraph": "^0.2.0",
