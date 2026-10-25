@@ -7,7 +7,7 @@ import {
   updateDocumentFilePath, updateDocumentHash, updateDocumentStatus,
 } from '../db/documents.js';
 import { deleteChunksByDoc } from '../db/chunks.js';
-import { safeJoin, sha256, validateUpload } from './files.js';
+import { safeJoin, sha256, validateFilename, validateUpload } from './files.js';
 import { ingestDocument, type IngestContext } from './pipeline.js';
 import { createSerialQueue } from './queue.js';
 
@@ -20,6 +20,7 @@ export function createDocumentService(options: {
 
   return {
     async upload(input: { name: string; buffer: Buffer; category: DocumentCategory }) {
+      validateFilename(input.name);
       const type: DocumentType = validateUpload(input.name, input.buffer.byteLength);
       const hash = sha256(input.buffer);
       const existing = findDocumentByHash(options.db, hash);
@@ -30,9 +31,15 @@ export function createDocumentService(options: {
         size: input.buffer.byteLength, sha256: hash, filePath: '',
       });
       const dir = path.join(options.dataDir, 'uploads', doc.id);
-      await fs.mkdir(dir, { recursive: true });
       const filePath = safeJoin(dir, input.name);
-      await fs.writeFile(filePath, input.buffer);
+      try {
+        await fs.mkdir(dir, { recursive: true });
+        await fs.writeFile(filePath, input.buffer);
+      } catch (error) {
+        deleteDocument(options.db, doc.id);
+        await fs.rm(dir, { recursive: true, force: true });
+        throw error;
+      }
       updateDocumentFilePath(options.db, doc.id, filePath);
       queue.enqueue(() => ingestDocument(options.ingest, doc.id));
       return getDocument(options.db, doc.id)!;
@@ -42,13 +49,19 @@ export function createDocumentService(options: {
       const doc = getDocument(options.db, id);
       if (!doc) throw new AppError('NOT_FOUND');
       if (!doc.filePath) throw new AppError('DOC_PARSE_FAILED', '缺少原文件路径');
-      const buffer = await fs.readFile(doc.filePath);
+      let buffer: Buffer;
+      try {
+        buffer = await fs.readFile(doc.filePath);
+      } catch {
+        throw new AppError('DOC_PARSE_FAILED', '原文件已丢失，请重新上传');
+      }
       const hash = sha256(buffer);
-      if (hash === doc.sha256) return { skipped: true as const };
-      updateDocumentHash(options.db, id, hash);
-      deleteChunksByDoc(options.db, id);
+      if (hash === doc.sha256 && doc.status === 'ready') return { skipped: true as const };
       updateDocumentStatus(options.db, id, { status: 'queued', stage: '排队中', progress: 0, chunkCount: 0 });
-      queue.enqueue(() => ingestDocument(options.ingest, id));
+      queue.enqueue(async () => {
+        await ingestDocument(options.ingest, id);
+        updateDocumentHash(options.db, id, hash);
+      });
       return { skipped: false as const };
     },
 

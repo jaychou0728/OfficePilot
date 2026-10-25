@@ -19,8 +19,7 @@ export function detectType(filename: string): DocumentType | null {
   return Object.hasOwn(TYPES, ext) ? TYPES[ext] : null;
 }
 
-export function safeJoin(root: string, filename: string): string {
-  const base = path.resolve(root);
+export function validateFilename(filename: string): void {
   const name = path.basename(filename);
   if (
     !name ||
@@ -33,7 +32,12 @@ export function safeJoin(root: string, filename: string): string {
   ) {
     throw new AppError('INVALID_REQUEST', '非法文件路径');
   }
-  const target = path.resolve(base, name);
+}
+
+export function safeJoin(root: string, filename: string): string {
+  validateFilename(filename);
+  const base = path.resolve(root);
+  const target = path.resolve(base, filename);
   if (!target.startsWith(base + path.sep)) {
     throw new AppError('INVALID_REQUEST', '非法文件路径');
   }

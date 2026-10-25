@@ -7,7 +7,13 @@ export function createSerialQueue(onError: (error: unknown) => void = () => {}):
   let tail: Promise<void> = Promise.resolve();
   return {
     enqueue(task) {
-      tail = tail.then(task).catch(onError);
+      tail = tail.then(task).catch((error) => {
+        try {
+          onError(error);
+        } catch {
+          // an error handler must not break the queue
+        }
+      });
     },
     idle() {
       return tail;

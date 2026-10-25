@@ -19,4 +19,13 @@ describe('serial queue', () => {
     await queue.idle();
     expect(events).toEqual(['ok']);
   });
+
+  it('continues when the onError handler throws', async () => {
+    const queue = createSerialQueue(() => { throw new Error('handler'); });
+    const events: string[] = [];
+    queue.enqueue(async () => { throw new Error('boom'); });
+    queue.enqueue(async () => { events.push('ok'); });
+    await queue.idle();
+    expect(events).toEqual(['ok']);
+  });
 });

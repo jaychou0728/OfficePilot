@@ -3,7 +3,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { openDatabase } from '../src/db/database.js';
-import { getDocument } from '../src/db/documents.js';
+import { getDocument, listDocuments } from '../src/db/documents.js';
+import { getChunks } from '../src/db/chunks.js';
 import { createMockProvider } from '../src/gateway/mock.js';
 import { createDocumentService } from '../src/ingest/service.js';
 
@@ -50,5 +51,53 @@ describe('document service', () => {
     await service.remove(doc.id);
     expect(getDocument(db, doc.id)).toBeNull();
     expect(fs.existsSync(path.dirname(ready.filePath))).toBe(false);
+  });
+
+  it('rejects an invalid filename before creating a document', async () => {
+    const service = makeService();
+    const buffer = Buffer.from('valid content');
+    await expect(service.upload({ name: '../evil.md', buffer, category: '制度' })).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
+    expect(listDocuments(db)).toHaveLength(0);
+    const doc = await service.upload({ name: 'ok.md', buffer, category: '制度' });
+    await service.idle();
+    expect(getDocument(db, doc.id)?.status).toBe('ready');
+  });
+
+  it('retries a failed document after the file is fixed', async () => {
+    const service = makeService();
+    const doc = await service.upload({ name: 'empty.md', buffer: Buffer.from('   '), category: '制度' });
+    await service.idle();
+    expect(getDocument(db, doc.id)?.status).toBe('failed');
+
+    const target = getDocument(db, doc.id)!.filePath;
+    fs.writeFileSync(target, '一线城市住宿 650 元。');
+    expect(await service.reindex(doc.id)).toEqual({ skipped: false });
+    await service.idle();
+    expect(getDocument(db, doc.id)?.status).toBe('ready');
+    expect(getChunks(db, doc.id).length).toBeGreaterThan(0);
+  });
+
+  it('reindexes changed content and replaces chunks', async () => {
+    const service = makeService();
+    const doc = await service.upload({ name: 'change.md', buffer: Buffer.from('一线城市住宿 650 元。'), category: '制度' });
+    await service.idle();
+    const target = getDocument(db, doc.id)!.filePath;
+    fs.writeFileSync(target, '二线城市住宿 450 元。');
+
+    expect(await service.reindex(doc.id)).toEqual({ skipped: false });
+    await service.idle();
+
+    const text = getChunks(db, doc.id).map((chunk) => chunk.text).join('');
+    expect(text).toContain('450');
+    expect(text).not.toContain('650');
+  });
+
+  it('maps a missing source file to DOC_PARSE_FAILED', async () => {
+    const service = makeService();
+    const doc = await service.upload({ name: 'lost.md', buffer: Buffer.from('x'), category: '制度' });
+    await service.idle();
+    const filePath = getDocument(db, doc.id)!.filePath;
+    fs.rmSync(filePath);
+    await expect(service.reindex(doc.id)).rejects.toMatchObject({ code: 'DOC_PARSE_FAILED' });
   });
 });
