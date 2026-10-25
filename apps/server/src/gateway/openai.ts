@@ -3,14 +3,15 @@ import type { ChatMessage, ChatOptions, ChatProvider, EmbeddingProvider } from '
 type OpenAiConfig = { baseUrl: string; apiKey: string; model: string; timeoutMs: number; proxyBaseUrl?: string };
 
 export function createOpenAiProvider(config: OpenAiConfig): ChatProvider & EmbeddingProvider {
-  const base = (config.proxyBaseUrl || config.baseUrl).replace(/\/$/, '');
+  const base = (config.proxyBaseUrl || config.baseUrl).replace(/\/+$/, '');
 
   async function request(path: string, body: unknown, signal?: AbortSignal) {
+    const timeout = AbortSignal.timeout(config.timeoutMs);
     const res = await fetch(`${base}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.apiKey}` },
       body: JSON.stringify(body),
-      signal: signal ?? AbortSignal.timeout(config.timeoutMs),
+      signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
     });
     if (!res.ok) {
       const text = await res.text();
@@ -34,7 +35,8 @@ export function createOpenAiProvider(config: OpenAiConfig): ChatProvider & Embed
         max_tokens: options.maxTokens,
       }, options.signal);
 
-      const reader = res.body!.getReader();
+      if (!res.body) throw new Error('provider returned no body');
+      const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
       try {
@@ -50,12 +52,30 @@ export function createOpenAiProvider(config: OpenAiConfig): ChatProvider & Embed
             const data = line.slice(5).trim();
             if (data === '[DONE]') return;
             const json = JSON.parse(data);
+            if (json.error) throw new Error(`provider stream error: ${json.error.message ?? JSON.stringify(json.error)}`);
             const delta = json.choices?.[0]?.delta?.content;
             if (delta) yield delta;
           }
         }
+        const tail = buffer.trim();
+        if (tail.startsWith('data:')) {
+          const data = tail.slice(5).trim();
+          if (data && data !== '[DONE]') {
+            let json: { error?: { message?: string }; choices?: Array<{ delta?: { content?: string } }> } | undefined;
+            try {
+              json = JSON.parse(data);
+            } catch {
+              json = undefined;
+            }
+            if (json) {
+              if (json.error) throw new Error(`provider stream error: ${json.error.message ?? JSON.stringify(json.error)}`);
+              const delta = json.choices?.[0]?.delta?.content;
+              if (delta) yield delta;
+            }
+          }
+        }
       } finally {
-        reader.releaseLock();
+        await reader.cancel().catch(() => {});
       }
     },
 
@@ -68,13 +88,17 @@ export function createOpenAiProvider(config: OpenAiConfig): ChatProvider & Embed
         max_tokens: options.maxTokens,
       }, options.signal);
       const json = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
-      return json.choices?.[0]?.message?.content ?? '';
+      const content = json.choices?.[0]?.message?.content;
+      if (typeof content !== 'string') throw new Error('provider response missing content');
+      return content;
     },
 
     async embed(texts: string[], signal?: AbortSignal) {
       const res = await request('/embeddings', { model: config.model, input: texts }, signal);
       const json = await res.json() as { data?: Array<{ embedding: number[] }> };
-      return (json.data ?? []).map((item) => item.embedding);
+      const data = json.data;
+      if (!Array.isArray(data)) throw new Error('provider response missing embeddings');
+      return data.map((item) => item.embedding);
     },
   };
 }
