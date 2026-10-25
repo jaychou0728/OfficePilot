@@ -1472,7 +1472,7 @@ function mapRow(row: Record<string, unknown>): DocumentRow {
 }
 ```
 
-> `filePath` 的真实值由 ingestion 服务在创建时写入 URL 或目录；此处返回 `data/uploads/<id>` 作为约定。若需要精确保存原文件名，在 Task 15 里扩展 `file_path` 列。
+> `filePath` 对应 `documents.file_path`。ingestion 可以先创建记录再落盘，然后用 `updateDocumentFilePath` 写入真实路径；`updateDocumentHash` 用于增量重索引。
 
 - [ ] **Step 4: 运行确认通过**
 
