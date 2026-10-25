@@ -115,7 +115,7 @@ officepilot/
     "start": "npm -w apps/server run start",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc -p packages/shared/tsconfig.json --noEmit && tsc -p apps/server/tsconfig.json --noEmit && tsc -p apps/web/tsconfig.json --noEmit",
+    "typecheck": "tsc -p packages/shared/tsconfig.json --noEmit && tsc -p apps/server/tsconfig.json --noEmit && tsc -p apps/web/tsconfig.json --noEmit && tsc -p tsconfig.json --noEmit",
     "demo:seed": "tsx scripts/seed-demo.ts",
     "demo": "npm run demo:seed && npm run dev",
     "demo:offline": "cross-env DEMO_MODE=true npm run demo",
@@ -1003,8 +1003,11 @@ git commit -m "feat(web): bootstrap react workbench shell and design tokens"
 
 ### Task 5: 开发编排与健康联调
 
+> **执行状态（2026-10-25）**：已完成（提交 `67a9593` + `cc9840a`）。新增根 `tsconfig.json` 覆盖 `tests/**`、`scripts/**` 与 `vitest.config.ts`；根 `typecheck` 已包含该配置；smoke test 使用 try/finally 并断言 health body；README 已修正 e2e/npmmirror/shell 措辞。下方是初版快照，以仓库为准。
+
 **Files:**
 - Create: `scripts/dev.mjs`（可选；root script 已用 concurrently）
+- Create: `tsconfig.json`（根级 typecheck）
 - Modify: `README.md`
 - Test: `tests/integration/dev-smoke.test.ts`
 
@@ -1018,14 +1021,28 @@ import { buildApp } from '../../apps/server/src/app.js';
 
 describe('dev smoke', () => {
   it('serves health and 404s unknown API', async () => {
-    const app = buildApp({ dbPath: ':memory:', env: { DEMO_MODE: 'false' } as NodeJS.ProcessEnv });
-    const health = await app.inject({ method: 'GET', url: '/api/health' });
-    expect(health.statusCode).toBe(200);
-    const missing = await app.inject({ method: 'GET', url: '/api/nope' });
-    expect(missing.statusCode).toBe(404);
-    await app.close();
+    const app = buildApp({ env: { DEMO_MODE: 'false' } as NodeJS.ProcessEnv });
+    try {
+      const health = await app.inject({ method: 'GET', url: '/api/health' });
+      expect(health.statusCode).toBe(200);
+      expect(health.json()).toMatchObject({ status: 'ok', db: 'ok' });
+      const missing = await app.inject({ method: 'GET', url: '/api/nope' });
+      expect(missing.statusCode).toBe(404);
+    } finally {
+      await app.close();
+    }
   });
 });
+```
+
+根级 `tsconfig.json`：
+
+```json
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": { "types": ["node"] },
+  "include": ["tests/**/*.ts", "scripts/**/*.ts", "vitest.config.ts"]
+}
 ```
 
 - [ ] **Step 2: 运行**
