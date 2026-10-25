@@ -2,11 +2,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import Fastify, { type FastifyInstance } from 'fastify';
 import multipart from '@fastify/multipart';
+import { AppError } from '@officepilot/shared';
 import { loadConfig, type AppConfig } from './config.js';
 import { openDatabase } from './db/database.js';
+import { getDocument } from './db/documents.js';
 import { createGateway } from './gateway/index.js';
 import { createMockProvider } from './gateway/mock.js';
 import { createOpenAiProvider } from './gateway/openai.js';
+import { createDocumentService } from './ingest/service.js';
+import { documentRoutes } from './routes/documents.js';
 import { healthRoutes } from './routes/health.js';
 import { runRoutes } from './routes/runs.js';
 import { createRunManager } from './runs/manager.js';
@@ -109,6 +113,22 @@ export function buildApp(options: BuildOptions = {}): FastifyInstance {
   app.register(multipart);
   healthRoutes(app);
   runRoutes(app, manager, db);
+
+  const documents = createDocumentService({
+    db,
+    dataDir: config.dataDir,
+    ingest: {
+      db,
+      provider: gateway.embed,
+      fileLoader: async (docId: string) => {
+        const doc = getDocument(db, docId);
+        if (!doc?.filePath) throw new AppError('DOC_PARSE_FAILED', '缺少原文件路径');
+        return fs.promises.readFile(doc.filePath);
+      },
+    },
+  });
+
+  documentRoutes(app, { db, documents });
 
   app.addHook('onClose', async () => {
     db.close();
