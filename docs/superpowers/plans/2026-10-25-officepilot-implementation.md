@@ -339,7 +339,8 @@ Expected: FAIL，模块 `../src/index.js` 不存在。
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "exports": { ".": { "types": "./src/index.ts", "import": "./src/index.ts" } }
+  "exports": { ".": { "types": "./src/index.ts", "import": "./src/index.ts" } },
+  "dependencies": { "zod": "^3.24.0" }
 }
 ```
 
@@ -519,7 +520,7 @@ export * from './events.js';
 
 Run: `npm test -- packages/shared/tests`
 
-Expected: 4 tests passed。
+Expected: 6 tests passed（schemas 5 + events 1）。
 
 - [ ] **Step 5: 提交**
 
