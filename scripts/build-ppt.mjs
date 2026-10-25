@@ -156,7 +156,7 @@ function newSlide(bg = C.paper) {
     });
   });
 
-  addText(slide, '团队信息：单人项目 · 姓名：________', {
+  addText(slide, '团队信息：单人项目 · 姓名：肖俊坚', {
     x: 0.9, y: 6.24, w: 8.0, h: 0.26, fontSize: 9, color: C.ink3,
   });
   addText(slide, '2026-10-25 · feat/officepilot · Node 24 / Fastify 5 / React 19 / LangGraph', {
