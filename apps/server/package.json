@@ -24,6 +24,8 @@
     "zod-to-json-schema": "^3.24.0"
   },
   "devDependencies": {
+    "docx": "^9.14.0",
+    "pdf-lib": "^1.17.1",
     "tsup": "^8.3.5"
   }
 }
