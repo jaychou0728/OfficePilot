@@ -97,4 +97,84 @@ describe('model gateway fallback', () => {
     const [vector] = await gateway.embed.embed(['差旅']);
     expect(vector).toHaveLength(64);
   });
+
+  it('does not retry after the first token was emitted', async () => {
+    let fallbackCalls = 0;
+    const partial: ChatProvider = {
+      name: 'partial',
+      async *stream() { yield 'a'; throw new Error('boom'); },
+      async complete() { return 'x'; },
+    };
+    const fallback: ChatProvider = {
+      ...createMockProvider({ answer: 'fallback' }),
+      async *stream() { fallbackCalls++; yield* createMockProvider({ answer: 'fallback' }).stream([]); },
+    };
+    const gateway = createGateway({
+      chat: { primary: partial, fallback },
+      embed: { primary: createMockProvider() },
+      retry: { attempts: 0, delaysMs: [] },
+    });
+    await expect(async () => {
+      for await (const _ of gateway.chat.stream([{ role: 'user', content: 'q' }])) { /* noop */ }
+    }).rejects.toMatchObject({ code: 'LLM_UNAVAILABLE' });
+    expect(fallbackCalls).toBe(0);
+  });
+
+  it('does not retry non-retryable 401 but falls back', async () => {
+    let calls = 0;
+    const unauthorized: ChatProvider = {
+      name: '401',
+      async *stream() { calls++; throw Object.assign(new Error('401'), { status: 401 }); },
+      async complete() { calls++; throw Object.assign(new Error('401'), { status: 401 }); },
+    };
+    const gateway = createGateway({
+      chat: { primary: unauthorized, fallback: createMockProvider({ answer: 'ok' }) },
+      embed: { primary: createMockProvider() },
+      retry: { attempts: 2, delaysMs: [0, 0] },
+    });
+    await expect(gateway.chat.complete([{ role: 'user', content: 'q' }])).resolves.toBe('ok');
+    expect(calls).toBe(1);
+  });
+
+  it('stops immediately on caller abort without retry or fallback', async () => {
+    let calls = 0;
+    const aborting: ChatProvider = {
+      name: 'abort',
+      async *stream() { calls++; throw abortErrorForTest(); },
+      async complete() { calls++; throw abortErrorForTest(); },
+    };
+    const gateway = createGateway({
+      chat: { primary: aborting, fallback: createMockProvider({ answer: 'fallback' }) },
+      embed: { primary: createMockProvider() },
+      retry: { attempts: 2, delaysMs: [0, 0] },
+    });
+    await expect(gateway.chat.complete([{ role: 'user', content: 'q' }])).rejects.toThrow(/aborted/);
+    expect(calls).toBe(1);
+  });
+
+  it('throws EMBEDDING_FAILED when the embedding chain is exhausted', async () => {
+    const gateway = createGateway({
+      chat: { primary: createMockProvider() },
+      embed: { primary: brokenEmbed(), fallback: brokenEmbed() },
+      retry: { attempts: 0, delaysMs: [] },
+    });
+    await expect(gateway.embed.embed(['x'])).rejects.toMatchObject({ code: 'EMBEDDING_FAILED' });
+  });
+
+  it('uses the demo embedding provider when demoMode is true', async () => {
+    const gateway = createGateway({
+      chat: { primary: createMockProvider() },
+      embed: { primary: brokenEmbed(), fallback: brokenEmbed(), demo: createMockProvider({ dim: 32 }) },
+      demoMode: true,
+      retry: { attempts: 0, delaysMs: [] },
+    });
+    const [vector] = await gateway.embed.embed(['x']);
+    expect(vector).toHaveLength(32);
+  });
 });
+
+function abortErrorForTest() {
+  const error = new Error('aborted');
+  error.name = 'AbortError';
+  return error;
+}
