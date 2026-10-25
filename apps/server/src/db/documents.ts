@@ -37,6 +37,7 @@ export function findDocumentByHash(db: DatabaseSync, sha256: string): DocumentRo
   return row ? mapRow(row) : null;
 }
 
+/** Error fields are a per-attempt snapshot: omitting them clears previous errors; stage/progress/chunkCount use COALESCE. */
 export function updateDocumentStatus(db: DatabaseSync, id: string, patch: {
   status: DocumentStatus; stage?: string; progress?: number; chunkCount?: number; errorCode?: string; errorMessage?: string;
 }): void {
