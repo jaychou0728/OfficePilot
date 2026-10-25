@@ -535,14 +535,18 @@ git commit -m "feat(shared): add zod contracts, error codes and SSE events"
 
 ### Task 3: 服务端骨架、配置与 health
 
+> **执行状态（2026-10-25）**：已完成（提交 `63a7f1b` + `8e247d1`）。最终实现以 `apps/server` 为准：build 通过 `tsup.config.ts` 的 `noExternal`（`--no-external` 参数在 tsup 8 无效）；scaffold 阶段 health 的 `embeddingDim` 与 `latencyMs` 返回 `null`，Task 6 接 DB 后填真实维度，Task 14 做真实 provider 探测；配置校验已收紧，logger redaction 覆盖真实 Key 字段。下方代码是初版快照，若与仓库冲突以仓库为准。
+
 **Files:**
 - Create: `apps/server/package.json`
 - Create: `apps/server/tsconfig.json`
+- Create: `apps/server/tsup.config.ts`
 - Create: `apps/server/src/config.ts`
 - Create: `apps/server/src/app.ts`
 - Create: `apps/server/src/index.ts`
 - Create: `apps/server/src/routes/health.ts`
 - Test: `apps/server/tests/health.test.ts`
+- Test: `apps/server/tests/config.test.ts`
 
 - [ ] **Step 1: 写失败测试**
 
@@ -584,7 +588,7 @@ Expected: FAIL，`buildApp` 不存在。
   "type": "module",
   "scripts": {
     "dev": "tsx watch --env-file-if-exists=../../.env src/index.ts",
-    "build": "tsup src/index.ts --format esm --out-dir dist --clean --sourcemap --no-external @officepilot/shared",
+    "build": "tsup",
     "start": "node --env-file-if-exists=../../.env dist/index.js"
   },
   "dependencies": {
@@ -617,6 +621,21 @@ Expected: FAIL，`buildApp` 不存在。
   "compilerOptions": { "types": ["node"] },
   "include": ["src/**/*.ts", "tests/**/*.ts"]
 }
+```
+
+`apps/server/tsup.config.ts`：
+
+```ts
+import { defineConfig } from 'tsup';
+
+export default defineConfig({
+  entry: ['src/index.ts'],
+  format: ['esm'],
+  outDir: 'dist',
+  clean: true,
+  sourcemap: true,
+  noExternal: ['@officepilot/shared'],
+});
 ```
 
 `apps/server/src/config.ts`：
@@ -1057,6 +1076,8 @@ git commit -m "chore: add dev smoke test and README"
 # Phase 1 · 数据层
 
 ### Task 6: SQLite schema 与迁移
+
+> 接上真实 DB 后：把 `buildApp` 的 `dbOk` stub 替换为 `openDatabase` 的连通性检查；`GET /api/health` 的 `embeddingDim` 从 `app_meta.embedding_dim` 读取（未建库时保持 null）。
 
 **Files:**
 - Create: `apps/server/src/db/schema.ts`
@@ -2037,6 +2058,8 @@ git commit -m "feat(gateway): add deterministic mock provider"
 ---
 
 ### Task 14: 网关重试、降级与 health
+
+> 本任务把 scaffold 阶段 health 的临时值替换为真实状态：provider 用短超时探测并记录实测 latency；`embeddingDim` 从 `app_meta` 读取；不要保留 `latencyMs: null` 或硬编码 1024。
 
 **Files:**
 - Create: `apps/server/src/gateway/index.ts`
