@@ -158,19 +158,23 @@ officepilot/
 ```
 node_modules/
 dist/
+coverage/
 .env
+.env.*
+!.env.example
 data/
 playwright-report/
 test-results/
-src-tauri/
 _temp/
 *.log
+*.tsbuildinfo
 ```
 
 `.env.example`：
 
 ```env
 PORT=3000
+# Use 0.0.0.0 when running inside Docker
 HOST=127.0.0.1
 DATA_DIR=./data
 
@@ -198,11 +202,13 @@ MATCH_THRESHOLD=0.55
 
 ```ts
 import { defineConfig } from 'vitest/config';
-import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
   resolve: {
-    alias: { '@officepilot/shared': path.resolve('packages/shared/src/index.ts') },
+    alias: {
+      '@officepilot/shared': fileURLToPath(new URL('./packages/shared/src/index.ts', import.meta.url)),
+    },
   },
   test: {
     environment: 'node',
@@ -218,8 +224,14 @@ export default defineConfig({
 import { describe, it, expect } from 'vitest';
 
 describe('toolchain', () => {
-  it('runs vitest', () => {
-    expect(2 + 2).toBe(4);
+  it('runs on Node 24 with node:sqlite', async () => {
+    expect(Number(process.versions.node.split('.')[0])).toBeGreaterThanOrEqual(24);
+    const { DatabaseSync } = await import('node:sqlite');
+    const db = new DatabaseSync(':memory:');
+    db.exec('CREATE TABLE t(a INTEGER)');
+    db.prepare('INSERT INTO t VALUES (1)').run();
+    expect(db.prepare('SELECT COUNT(*) AS c FROM t').get()).toEqual({ c: 1 });
+    db.close();
   });
 });
 ```
@@ -479,12 +491,12 @@ export class AppError extends Error {
 
 ```ts
 import type { ErrorCode } from './errors.js';
-import type { RunResult } from './schemas.js';
+import type { RunResult, Source } from './schemas.js';
 
 export type SseEvent =
   | { type: 'node'; node: string; status: 'running' | 'done' | 'fail'; ms?: number; detail?: string }
   | { type: 'token'; text: string }
-  | { type: 'citation'; sources: RunResult extends never ? never : Array<Record<string, unknown>> }
+  | { type: 'citation'; sources: Source[] }
   | { type: 'validation'; ok: boolean; errors: Array<{ field: string; reason: string }>; attempt: number }
   | { type: 'result'; result: RunResult }
   | { type: 'error'; code: ErrorCode; message: string; retryable: boolean }
