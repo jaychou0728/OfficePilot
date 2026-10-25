@@ -2,9 +2,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { AppError, type DocumentCategory } from '@officepilot/shared';
+import { loadConfig } from '../apps/server/src/config.js';
 import { openDatabase } from '../apps/server/src/db/database.js';
 import { getDocument } from '../apps/server/src/db/documents.js';
 import { createDemoProvider } from '../apps/server/src/gateway/demo.js';
+import { createOpenAiProvider } from '../apps/server/src/gateway/openai.js';
 import { createDocumentService } from '../apps/server/src/ingest/service.js';
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
@@ -24,7 +26,16 @@ async function main(): Promise<void> {
   const dataDir = path.resolve(process.env.DATA_DIR ?? 'data');
   fs.mkdirSync(dataDir, { recursive: true });
   const db = openDatabase(path.join(dataDir, 'officepilot.db'));
-  const provider = createDemoProvider();
+  const config = loadConfig(process.env);
+  const provider = config.LLM_PROVIDER === 'mock'
+    ? createDemoProvider()
+    : createOpenAiProvider({
+        baseUrl: config.EMBEDDING_BASE_URL || config.LLM_BASE_URL,
+        apiKey: config.EMBEDDING_API_KEY || config.LLM_API_KEY,
+        model: config.EMBEDDING_MODEL || config.LLM_MODEL,
+        timeoutMs: config.EMBEDDING_TIMEOUT_MS,
+      });
+  console.log(`Embedding provider: ${provider.name} / ${provider.model}`);
   const fileLoader = async (docId: string) => {
     const doc = getDocument(db, docId);
     if (!doc?.filePath) throw new Error('missing');

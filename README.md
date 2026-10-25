@@ -46,6 +46,14 @@ npm run build
 npm start                     # http://127.0.0.1:3000
 ```
 
+### 使用真实模型（可选）
+
+1. 在 `.env` 配置 LLM_PROVIDER / LLM_BASE_URL / LLM_API_KEY / LLM_MODEL 和 EMBEDDING_*。
+2. 清空演示库并重建真实向量索引：`rm -rf data && npm run demo:seed`。
+3. 启动：`npm run dev`（或 `npm run build && npm start`）。
+
+注意：mock/demo provider 使用 256 维哈希向量；真实 embedding 维度通常为 1024/2048。切换 provider 后必须清空 `data/` 并重新 seed，否则会触发 EMBEDDING_DIM_MISMATCH。真实 provider 的检索阈值使用 MATCH_THRESHOLD（默认 0.55）；mock/demo 自动使用 0.1。选择真实 provider 却缺少 Key / Base URL / 模型名时，seed 会在首次向量化时报错。
+
 ---
 
 ## 演示数据
