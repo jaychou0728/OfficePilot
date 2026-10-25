@@ -1,0 +1,29 @@
+{
+  "name": "officepilot",
+  "private": true,
+  "type": "module",
+  "workspaces": ["apps/*", "packages/*"],
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "dev": "concurrently -k -n server,web -c green,cyan \"npm -w apps/server run dev\" \"npm -w apps/web run dev\"",
+    "build": "npm -w apps/server run build && npm -w apps/web run build",
+    "start": "npm -w apps/server run start",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p packages/shared/tsconfig.json --noEmit && tsc -p apps/server/tsconfig.json --noEmit && tsc -p apps/web/tsconfig.json --noEmit",
+    "demo:seed": "tsx scripts/seed-demo.ts",
+    "demo": "npm run demo:seed && npm run dev",
+    "demo:offline": "cross-env DEMO_MODE=true npm run demo",
+    "e2e": "playwright test",
+    "eval": "tsx scripts/eval-rag.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^24.0.0",
+    "concurrently": "^9.1.0",
+    "cross-env": "^7.0.3",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}
