@@ -157,13 +157,12 @@ f8d2fe7 fix(demo): cite available sources in qa answers
 
 ### 交付阶段（本次新增）
 
-交付文档、Dockerfile、PPT 与上述两处生产构建修复完成后统一提交：
+生产构建的两处修复先单独提交，交付物随后提交：
 
 ```
-docs: add delivery documentation, ppt and docker packaging
+1ec03a6 fix(build): keep node: protocol and resolve web dist from config
+7491224 docs: add delivery documentation, ppt and docker packaging
 ```
-
-（提交 SHA 见最终交付说明。）
 
 ---
 

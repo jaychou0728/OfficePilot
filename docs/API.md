@@ -232,8 +232,6 @@
       "ordinal": 0,
       "text": "一线城市（北京、上海、广州、深圳）住宿费标准为每人每晚不超过 650 元……",
       "page": 1,
-      "sheet": null,
-      "section": null,
       "startOffset": 0,
       "endOffset": 412
     }
