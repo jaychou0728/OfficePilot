@@ -100,7 +100,8 @@ export function buildApp(options: BuildOptions = {}): FastifyInstance {
   }
   const db = openDatabase(dbPath);
   const gateway = createGatewayFromConfig(config);
-  const manager = createRunManager({ db, gateway, threshold: config.MATCH_THRESHOLD });
+  const threshold = config.LLM_PROVIDER === 'mock' || config.demoMode ? 0.1 : config.MATCH_THRESHOLD;
+  const manager = createRunManager({ db, gateway, threshold });
 
   app.decorate('config', config);
   app.decorate('dbOk', () => {
