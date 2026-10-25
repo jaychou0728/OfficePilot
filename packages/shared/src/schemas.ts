@@ -78,6 +78,11 @@ export const WeeklyResultSchema = z.object({
 
 export const RunResultSchema = z.discriminatedUnion('type', [QaResultSchema, ExtractResultSchema, WeeklyResultSchema]);
 
+export const RunUsageSchema = z.object({
+  promptTokens: z.number().int().nonnegative(),
+  completionTokens: z.number().int().nonnegative(),
+});
+
 export type Skill = z.infer<typeof SkillSchema>;
 export type DocumentCategory = z.infer<typeof DocumentCategorySchema>;
 export type DocumentStatus = z.infer<typeof DocumentStatusSchema>;
@@ -88,3 +93,8 @@ export type CreateRunRequest = z.infer<typeof CreateRunSchema>;
 export type Source = z.infer<typeof SourceSchema>;
 export type RunResult = z.infer<typeof RunResultSchema>;
 export type Boundary = z.infer<typeof BoundarySchema>;
+export type QaResult = z.infer<typeof QaResultSchema>;
+export type ExtractResult = z.infer<typeof ExtractResultSchema>;
+export type WeeklyResult = z.infer<typeof WeeklyResultSchema>;
+export type RunUsage = z.infer<typeof RunUsageSchema>;
+export type CreateRunInput = z.input<typeof CreateRunSchema>;

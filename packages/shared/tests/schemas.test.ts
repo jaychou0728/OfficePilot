@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CreateRunSchema, DocumentSchema, SourceSchema } from '../src/index.js';
+import { AppError, CreateRunSchema, DocumentSchema, RunResultSchema, SourceSchema } from '../src/index.js';
 
 describe('CreateRunSchema', () => {
   it('accepts a qa run', () => {
@@ -29,5 +29,33 @@ describe('SourceSchema', () => {
   it('accepts a source', () => {
     const s = SourceSchema.parse({ n: 1, docId: 'd1', docName: 'a', chunkId: 'c1', score: 0.9, snippet: 'x' });
     expect(s.n).toBe(1);
+  });
+});
+
+describe('RunResultSchema', () => {
+  it('accepts a qa result and rejects unknown types', () => {
+    expect(RunResultSchema.parse({ type: 'qa', answer: 'x', sources: [], confidence: 0.9 }).type).toBe('qa');
+    expect(() => RunResultSchema.parse({ type: 'nope' })).toThrow();
+  });
+});
+
+describe('CreateRunSchema edge cases', () => {
+  it('rejects extract when docIds is omitted', () => {
+    expect(() => CreateRunSchema.parse({ skill: 'extract', input: 'x', templateId: 'meeting' })).toThrow();
+  });
+
+  it('rejects extract with templateId null', () => {
+    expect(() => CreateRunSchema.parse({ skill: 'extract', input: 'x', docIds: ['a'], templateId: null })).toThrow();
+  });
+});
+
+describe('AppError', () => {
+  it('maps status/retryable and allows a message override', () => {
+    const err = new AppError('SCHEMA_INVALID');
+    expect(err.status).toBe(422);
+    expect(err.retryable).toBe(true);
+    expect(err.message).toBe('结构化输出校验失败');
+    expect(new AppError('LLM_TIMEOUT', '超时了').message).toBe('超时了');
+    expect(new AppError('EMBEDDING_DIM_MISMATCH').retryable).toBe(false);
   });
 });
