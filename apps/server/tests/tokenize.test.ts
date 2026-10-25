@@ -10,4 +10,15 @@ describe('tokenizeForFts', () => {
   it('builds an OR query', () => {
     expect(toFtsQuery('差旅 住宿')).toBe('"差旅" OR "住宿"');
   });
+
+  it('separates mixed script runs so numbers stay intact', () => {
+    expect(tokenizeForFts('650元')).toBe('650 元');
+    expect(tokenizeForFts('2024年')).toBe('2024 年');
+    expect(tokenizeForFts('Hello世界')).toBe('hello 世界');
+  });
+
+  it('returns an empty query for empty or punctuation-only input', () => {
+    expect(toFtsQuery('')).toBe('');
+    expect(toFtsQuery('，。！？')).toBe('');
+  });
 });
