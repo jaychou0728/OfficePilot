@@ -129,7 +129,7 @@ officepilot/
     "cross-env": "^7.0.3",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
-    "vitest": "^2.1.0"
+    "vitest": "^3.2.7"
   }
 }
 ```
@@ -569,7 +569,7 @@ Expected: FAIL，`buildApp` 不存在。
   "type": "module",
   "scripts": {
     "dev": "tsx watch --env-file-if-exists=../../.env src/index.ts",
-    "build": "tsup src/index.ts --format esm --out-dir dist --clean --sourcemap",
+    "build": "tsup src/index.ts --format esm --out-dir dist --clean --sourcemap --no-external @officepilot/shared",
     "start": "node --env-file-if-exists=../../.env dist/index.js"
   },
   "dependencies": {
@@ -608,7 +608,10 @@ Expected: FAIL，`buildApp` 不存在。
 
 ```ts
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
+
+const repoRoot = fileURLToPath(new URL('../../..', import.meta.url));
 
 const EnvSchema = z.object({
   PORT: z.coerce.number().default(3000),
@@ -638,7 +641,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
   const parsed = EnvSchema.parse(env);
   return {
     ...parsed,
-    dataDir: path.resolve(parsed.DATA_DIR),
+    dataDir: path.isAbsolute(parsed.DATA_DIR) ? parsed.DATA_DIR : path.resolve(repoRoot, parsed.DATA_DIR),
     demoMode: parsed.DEMO_MODE === 'true',
   };
 }
@@ -4702,7 +4705,23 @@ test('no horizontal overflow at desktop and mobile', async ({ page }) => {
 
 - [ ] **Step 2: 配置 webServer**
 
-`playwright.config.ts` 使用 `webServer` 启动 `npm run demo:offline`，等待 `http://127.0.0.1:3000/api/health`；`use.baseURL = http://127.0.0.1:5173`。
+`playwright.config.ts` 必须把测试目录锁定，避免把 Vitest 测试当作 E2E 收集：
+
+```ts
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './tests/e2e',
+  testMatch: '**/*.spec.ts',
+  use: { baseURL: 'http://127.0.0.1:5173' },
+  webServer: {
+    command: 'npm run demo:offline',
+    url: 'http://127.0.0.1:3000/api/health',
+    reuseExistingServer: true,
+    timeout: 120000,
+  },
+});
+```
 
 - [ ] **Step 3: 运行**
 
@@ -4772,8 +4791,10 @@ RUN npm run build
 FROM node:24-bookworm-slim
 WORKDIR /app
 ENV NODE_ENV=production
+ENV HOST=0.0.0.0
 COPY --from=build /app/package*.json ./
 COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/packages/shared ./packages/shared
 COPY --from=build /app/apps/server/dist ./apps/server/dist
 COPY --from=build /app/apps/web/dist ./apps/web/dist
 COPY --from=build /app/fixtures ./fixtures
