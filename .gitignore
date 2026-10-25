@@ -1,9 +1,12 @@
 node_modules/
 dist/
+coverage/
 .env
+.env.*
+!.env.example
 data/
 playwright-report/
 test-results/
-src-tauri/
 _temp/
 *.log
+*.tsbuildinfo

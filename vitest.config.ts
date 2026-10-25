@@ -1,9 +1,11 @@
 import { defineConfig } from 'vitest/config';
-import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
   resolve: {
-    alias: { '@officepilot/shared': path.resolve('packages/shared/src/index.ts') },
+    alias: {
+      '@officepilot/shared': fileURLToPath(new URL('./packages/shared/src/index.ts', import.meta.url)),
+    },
   },
   test: {
     environment: 'node',
