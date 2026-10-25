@@ -32,7 +32,10 @@ export const SseEventSchema = z.discriminatedUnion('type', [
 
 export type SseEvent = z.infer<typeof SseEventSchema>;
 
-export function parseSseEvent(raw: unknown): SseEvent {
+export function parseSseEvent(raw: unknown, type?: SseEvent['type']): SseEvent {
+  if (type && raw && typeof raw === 'object' && !('type' in raw)) {
+    return SseEventSchema.parse({ ...(raw as Record<string, unknown>), type });
+  }
   return SseEventSchema.parse(raw);
 }
 

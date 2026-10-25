@@ -24,8 +24,34 @@ describe('serializeSse', () => {
     expect(JSON.parse(data.slice(6))).toEqual({ text: 'a\nb' });
   });
 
-  it('round-trips through the runtime schema', () => {
+  it('validates internal envelopes', () => {
     expect(parseSseEvent({ type: 'token', text: 'x' })).toEqual({ type: 'token', text: 'x' });
     expect(() => parseSseEvent({ type: 'unknown' })).toThrow();
+  });
+
+  it('parses a wire payload when the event type is supplied', () => {
+    expect(parseSseEvent({ text: 'x' }, 'token')).toEqual({ type: 'token', text: 'x' });
+    expect(() => parseSseEvent({ text: 'x' })).toThrow();
+    expect(parseSseEvent({ ok: true, errors: [], attempt: 1 }, 'validation')).toEqual({
+      type: 'validation', ok: true, errors: [], attempt: 1,
+    });
+  });
+
+  it('serializes every event type with a matching event line', () => {
+    const events = [
+      { type: 'node', node: 'router', status: 'done' },
+      { type: 'token', text: 'x' },
+      { type: 'citation', sources: [] },
+      { type: 'validation', ok: true, errors: [], attempt: 1 },
+      { type: 'result', result: { type: 'qa', answer: 'x', sources: [], confidence: 0.9 } },
+      { type: 'error', code: 'LLM_TIMEOUT', message: 'timeout', retryable: true },
+      { type: 'done', runId: 'r1', usage: { promptTokens: 1, completionTokens: 1 } },
+    ] as const;
+    for (const event of events) {
+      const out = serializeSse(1, event as never);
+      expect(out).toContain(`event: ${event.type}`);
+      const data = out.split('\n').find((line) => line.startsWith('data: '))!;
+      expect(() => JSON.parse(data.slice(6))).not.toThrow();
+    }
   });
 });
