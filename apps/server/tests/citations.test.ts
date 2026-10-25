@@ -35,6 +35,16 @@ describe('citation validation', () => {
     expect(result.ok).toBe(true);
   });
 
+  it('does not treat 650 as grounded in 6500', () => {
+    const result = validateCitations('上限 650 元[1]', [src(1, '上限 6500 元')]);
+    expect(result.ok).toBe(false);
+  });
+
+  it('handles thousands separators in both directions', () => {
+    expect(validateCitations('预算 1,200 元[1]', [src(1, '预算 1200 元')]).ok).toBe(true);
+    expect(validateCitations('预算 1200 元[1]', [src(1, '预算 1,200 元')]).ok).toBe(true);
+  });
+
   it('computes a bounded confidence', () => {
     expect(confidence(0.9, 1, true)).toBeCloseTo(0.95, 2);
     expect(confidence(0, 0, false)).toBe(0);

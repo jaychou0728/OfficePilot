@@ -24,12 +24,15 @@ export function validateCitations(answer: string, sources: Source[]): Validation
     .filter((source) => refs.includes(source.n))
     .map((source) => source.snippet)
     .join('\n');
+  const NUMBER_RE = /\d{1,3}(?:[,，]\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?/g;
+  const numbers = [...body.matchAll(NUMBER_RE)].map((match) => match[0]);
   const normalize = (value: string) => value.replace(/[,，\s]/g, '');
   const citedNormalized = normalize(citedText);
-  const numbers = [...body.matchAll(/\d+(?:\.\d+)?/g)].map((match) => match[0]);
+  const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
   for (const token of numbers) {
-    if (!citedNormalized.includes(normalize(token))) {
+    const pattern = new RegExp(`(^|\\D)${escape(normalize(token))}(\\D|$)`);
+    if (!pattern.test(citedNormalized)) {
       errors.push({ field: token, reason: `数字 ${token} 未在引用片段中找到` });
     }
   }
