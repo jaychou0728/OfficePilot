@@ -4,7 +4,7 @@ import type { ChatProvider, EmbeddingProvider } from '../gateway/types.js';
 import type { RunEmitter } from './emitter.js';
 import { retrieveChunks } from './nodes/retrieve.js';
 import { streamAnswer } from './nodes/answer.js';
-import { boundaryResult } from './nodes/validate.js';
+import { boundaryResult, decideAfterValidation } from './nodes/validate.js';
 import { validateCitations, confidence } from '../validation/citations.js';
 
 export async function runQa(input: {
@@ -40,7 +40,7 @@ export async function runQa(input: {
   let validation = validateCitations('', sources);
   let attempts = 0;
 
-  while (attempts < 3) {
+  while (true) {
     const started = Date.now();
     draft = await streamAnswer({
       question: input.question,
@@ -57,7 +57,9 @@ export async function runQa(input: {
       errors: validation.errors,
       attempt: attempts + 1,
     });
+    const decision = decideAfterValidation(false, attempts);
     attempts++;
+    if (decision === 'degrade') break;
   }
 
   input.emitter.node('validate', validation.ok ? 'done' : 'fail', 40, validation.ok ? '引用校验通过' : '引用校验失败');

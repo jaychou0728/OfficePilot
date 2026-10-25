@@ -73,4 +73,26 @@ describe('qa flow', () => {
     if (result.type !== 'qa') throw new Error('unreachable');
     expect(result.answer).toContain('650');
   });
+
+  it('degrades after three failed citation attempts', async () => {
+    const doc = await seed('一线城市住宿 650 元');
+    let calls = 0;
+    const provider: ChatProvider = {
+      name: 'bad',
+      async *stream() {
+        calls++;
+        const answer = '住宿标准是 900 元[1]';
+        for (const char of answer) yield char;
+      },
+      async complete() { return ''; },
+    };
+    const result = await runQa({
+      db, provider, embedder: createMockProvider(), question: '住宿标准', docIds: [doc.id], threshold: 0.1, emitter: emitter(),
+    });
+    expect(calls).toBe(3);
+    expect(result.type).toBe('qa');
+    if (result.type !== 'qa') throw new Error('unreachable');
+    expect(result.boundary?.reason).toContain('引用校验');
+    expect(result.answer).toContain('无法确认');
+  });
 });
