@@ -11,6 +11,8 @@ describe('GET /api/health', () => {
     expect(body.db).toBe('ok');
     expect(body.demoMode).toBe(false);
     expect(Array.isArray(body.providers)).toBe(true);
+    expect(body.embeddingDim).toBeNull();
+    expect(body.providers[0].latencyMs).toBeNull();
     await app.close();
   });
 });

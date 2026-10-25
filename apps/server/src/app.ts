@@ -19,13 +19,24 @@ export function buildApp(options: BuildOptions = {}): FastifyInstance {
   const config = loadConfig(options.env ?? process.env);
   const app = Fastify({
     logger: options.logger
-      ? { redact: ['req.headers.authorization', '*.apiKey', '*.api_key'] }
+      ? {
+          redact: [
+            'req.headers.authorization',
+            'headers.authorization',
+            'authorization',
+            'apiKey',
+            'api_key',
+            'config.LLM_API_KEY',
+            'config.EMBEDDING_API_KEY',
+            'config.FALLBACK_LLM_API_KEY',
+          ],
+        }
       : false,
   });
 
   app.decorate('config', config);
   app.decorate('dbOk', () => true);
 
-  healthRoutes(app, config, () => true);
+  healthRoutes(app);
   return app;
 }
