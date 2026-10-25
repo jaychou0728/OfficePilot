@@ -2226,6 +2226,10 @@ git commit -m "feat(gateway): add fallback and streaming error handling"
 
 # Phase 3 · 文档入库
 
+> **Phase 3 完成（2026-10-25）**：Tasks 15–19 已实现并审查。提交 files `22264ce`/`6c40d74`/`40c0d4e`、parsers `04d2229`/`e3d4a0a`、chunker `406d345`/`3b4ddbb`、pipeline `3b8de45`/`ad0a82b`、service `2e456e7`/`1c1cd4d`。全量测试 104 passed，typecheck 0。
+> 关键加固：路径/保留名/原型链扩展名校验、真实 DOCX/XLSX/PDF 测试、空 XLSX 拒绝、公式/超链接/富文本单元格、RFC-4180 CSV、sheet 切块与 offsets 对齐、幂等 ingestion、失败可重试的 reindex、队列错误隔离。
+> 待办：MIME/魔数校验在 Task 32 路由层补上；存储文件名使用清洗后的客户端 basename（路径穿越已阻断），与设计「服务端生成文件名」按 sanitized name 解释。
+
 ### Task 15: 文件校验与安全落盘
 
 **Files:**
@@ -2689,6 +2693,8 @@ git commit -m "feat(ingest): add ingestion pipeline with embedding cache"
 ---
 
 ### Task 19: 串行队列与文档服务
+
+> **执行状态（2026-10-25）**：已完成并修复状态机（提交 `2e456e7` + `1c1cd4d`）。最终实现：先校验文件名再建记录；写盘失败清理记录/目录；reindex 仅在「hash 未变且 status=ready」时跳过；hash 在 ingestion 成功后更新；缺少原文件映射为 DOC_PARSE_FAILED；队列 onError 抛错不会阻塞后续任务。新增 `documents.service.test.ts`。以仓库代码为准。
 
 **Files:**
 - Create: `apps/server/src/ingest/queue.ts`
