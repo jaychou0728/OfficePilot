@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import Fastify, { type FastifyInstance } from 'fastify';
 import multipart from '@fastify/multipart';
-import { AppError } from '@officepilot/shared';
+import { ZodError } from 'zod';
+import { AppError, ERROR_CODES } from '@officepilot/shared';
 import { loadConfig, type AppConfig } from './config.js';
 import { openDatabase } from './db/database.js';
 import { getDocument } from './db/documents.js';
@@ -12,6 +13,7 @@ import { createOpenAiProvider } from './gateway/openai.js';
 import { createDocumentService } from './ingest/service.js';
 import { documentRoutes } from './routes/documents.js';
 import { healthRoutes } from './routes/health.js';
+import { openapiRoutes, publicRoutes } from './routes/openapi.js';
 import { runRoutes } from './routes/runs.js';
 import { createRunManager } from './runs/manager.js';
 
@@ -111,8 +113,7 @@ export function buildApp(options: BuildOptions = {}): FastifyInstance {
   });
 
   app.register(multipart);
-  healthRoutes(app);
-  runRoutes(app, manager, db);
+  openapiRoutes(app);
 
   const documents = createDocumentService({
     db,
@@ -128,7 +129,39 @@ export function buildApp(options: BuildOptions = {}): FastifyInstance {
     },
   });
 
-  documentRoutes(app, { db, documents });
+  // Register API routes in a child plugin so they load after @fastify/swagger's
+  // onRoute hook is installed; otherwise the generated spec has no paths.
+  app.register(async (api) => {
+    healthRoutes(api, () => {
+      try {
+        const row = db.prepare("SELECT value FROM app_meta WHERE key='embedding_dim'").get() as { value: string } | undefined;
+        return row ? Number(row.value) : null;
+      } catch {
+        return null;
+      }
+    });
+    runRoutes(api, manager, db);
+    documentRoutes(api, { db, documents });
+  });
+
+  publicRoutes(app);
+
+  app.setErrorHandler((error, request, reply) => {
+    const appError = error instanceof AppError ? error : null;
+    const zodError = error instanceof ZodError ? error : null;
+    const code = appError?.code ?? (zodError ? 'INVALID_REQUEST' : 'INTERNAL');
+    const status = appError?.status ?? (zodError ? 400 : ((error as { statusCode?: number }).statusCode ?? 500));
+    const retryable = appError?.retryable ?? (zodError ? false : ERROR_CODES.INTERNAL.retryable);
+    const message = appError
+      ? appError.message
+      : zodError
+        ? zodError.issues[0]?.message ?? '请求参数不合法'
+        : status >= 500
+          ? '服务内部错误'
+          // Fastify 5 types the handler error as unknown by default.
+          : (error as Error).message;
+    reply.code(status).send({ error: { code, message, retryable, requestId: request.id } });
+  });
 
   app.addHook('onClose', async () => {
     db.close();
