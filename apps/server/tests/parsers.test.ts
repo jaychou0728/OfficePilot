@@ -51,4 +51,32 @@ describe('parsers', () => {
     await expect(parseDocument(Buffer.from('not a pdf'), 'PDF')).rejects.toMatchObject({ code: 'DOC_PARSE_FAILED' });
     await expect(parseDocument(Buffer.from(''), 'TXT')).rejects.toMatchObject({ code: 'DOC_PARSE_FAILED' });
   });
+
+  it('rejects an empty xlsx', async () => {
+    const wb = new ExcelJS.Workbook();
+    wb.addWorksheet('空');
+    const buffer = Buffer.from(await wb.xlsx.writeBuffer());
+    await expect(parseDocument(buffer, 'XLSX')).rejects.toMatchObject({ code: 'DOC_PARSE_FAILED' });
+  });
+
+  it('renders xlsx formulas and hyperlinks without [object Object]', async () => {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('S');
+    ws.getCell('A1').value = { formula: '1+1', result: 2 };
+    ws.getCell('B1').value = { text: '链接文本', hyperlink: 'https://example.com' };
+    const parsed = await parseDocument(Buffer.from(await wb.xlsx.writeBuffer()), 'XLSX');
+    expect(parsed.text).toContain('2');
+    expect(parsed.text).toContain('链接文本');
+    expect(parsed.text).not.toContain('[object Object]');
+  });
+
+  it('parses quoted csv fields with commas and newlines', async () => {
+    const parsed = await parseDocument(Buffer.from('"a,b",c\n"line1\nline2",d'), 'CSV');
+    expect(parsed.sheets[0].rows).toContain('a,b | c');
+    expect(parsed.text).toContain('line1\nline2');
+  });
+
+  it('rejects unknown document types', async () => {
+    await expect(parseDocument(Buffer.from('x'), 'PPTX' as never)).rejects.toMatchObject({ code: 'DOC_UNSUPPORTED' });
+  });
 });

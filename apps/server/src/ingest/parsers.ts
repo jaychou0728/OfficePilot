@@ -43,26 +43,87 @@ async function parseXlsx(buffer: Buffer): Promise<ParsedDocument> {
     const sheets: ParsedSheet[] = [];
     workbook.eachSheet((sheet) => {
       const rows: string[] = [];
-      sheet.eachRow((row) => {
-        const values = row.values as unknown[];
-        const line = values.slice(1).map((value) => String(value ?? '').trim()).filter(Boolean).join(' | ');
-        if (line) rows.push(line);
+      sheet.eachRow({ includeEmpty: false }, (row) => {
+        const cells: string[] = [];
+        row.eachCell({ includeEmpty: false }, (cell) => {
+          if (cell.isMerged && cell.master !== cell) return;
+          const text = excelCellText(cell);
+          if (text) cells.push(text);
+        });
+        if (cells.length) rows.push(cells.join(' | '));
       });
-      sheets.push({ name: sheet.name, rows });
+      if (rows.length) sheets.push({ name: sheet.name, rows });
     });
-    const text = sheets.map((sheet) => `[${sheet.name}]\n${sheet.rows.join('\n')}`).join('\n\n').trim();
-    if (!text) throw new Error('empty');
+    if (!sheets.length) throw new Error('empty');
+    const text = sheets.map((sheet) => `[${sheet.name}]\n${sheet.rows.join('\n')}`).join('\n\n');
     return { text, pages: [], sheets };
   } catch {
     throw new AppError('DOC_PARSE_FAILED');
   }
 }
 
+function excelCellText(cell: ExcelJS.Cell): string {
+  const value = cell.value;
+  if (value == null) return '';
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  if (typeof value === 'object') {
+    if ('result' in value) {
+      const result = (value as { result?: unknown }).result;
+      return result == null ? '' : String(result);
+    }
+    if ('hyperlink' in value) {
+      return String((value as { text?: string }).text ?? cell.text ?? '');
+    }
+    if ('richText' in value) {
+      return (value as { richText: Array<{ text: string }> }).richText.map((part) => part.text).join('');
+    }
+  }
+  return cell.text ?? String(value ?? '');
+}
+
 function parseCsv(buffer: Buffer): ParsedDocument {
-  const rows = buffer.toString('utf8').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const text = buffer.toString('utf8').replace(/^﻿/, '');
+  const rows = parseCsvRows(text);
   if (!rows.length) throw new AppError('DOC_PARSE_FAILED', 'CSV 为空');
-  const text = rows.join('\n');
-  return { text, pages: [], sheets: [{ name: 'CSV', rows }] };
+  const lines = rows.map((row) => row.map((cell) => cell.trim()).join(' | '));
+  return { text: lines.join('\n'), pages: [], sheets: [{ name: 'CSV', rows: lines }] };
+}
+
+function parseCsvRows(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (inQuotes) {
+      if (char === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else inQuotes = false;
+      } else {
+        field += char;
+      }
+    } else if (char === '"') {
+      inQuotes = true;
+    } else if (char === ',') {
+      row.push(field);
+      field = '';
+    } else if (char === '\n') {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = '';
+    } else if (char !== '\r') {
+      field += char;
+    }
+  }
+
+  if (field.length || row.length) {
+    row.push(field);
+    rows.push(row);
+  }
+  return rows.filter((cells) => cells.some((cell) => cell.trim().length > 0));
 }
 
 async function parsePdf(buffer: Buffer): Promise<ParsedDocument> {
