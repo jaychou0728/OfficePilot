@@ -32,6 +32,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
   const parsed = EnvSchema.parse(env);
   return {
     ...parsed,
+    repoRoot,
     dataDir: path.isAbsolute(parsed.DATA_DIR) ? parsed.DATA_DIR : path.resolve(repoRoot, parsed.DATA_DIR),
     demoMode: parsed.DEMO_MODE,
   };

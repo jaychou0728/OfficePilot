@@ -4,11 +4,7 @@ import swaggerUi from '@fastify/swagger-ui';
 import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import { existsSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-
-// openapi.ts lives in apps/server/src/routes, so four levels up is the repo root.
-const repoRoot = fileURLToPath(new URL('../../../../', import.meta.url));
 
 export function openapiRoutes(app: FastifyInstance) {
   app.register(swagger, {
@@ -20,7 +16,7 @@ export function openapiRoutes(app: FastifyInstance) {
 
 export function publicRoutes(app: FastifyInstance) {
   app.register(cors, { origin: true });
-  const webDist = path.resolve(repoRoot, 'apps/web/dist');
+  const webDist = path.resolve(app.config.repoRoot, 'apps/web/dist');
   if (existsSync(webDist)) {
     app.register(fastifyStatic, { root: webDist });
     app.setNotFoundHandler((request, reply) => {
