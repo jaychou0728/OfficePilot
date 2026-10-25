@@ -5,13 +5,16 @@
 ## 环境
 
 - Node.js >= 24
-- npm（已配置 npmmirror）
+- npm（本机开发环境已配置 npmmirror，仓库不保证该配置）
 
 ## 启动
 
 ```bash
 npm install
+# Git Bash
 cp .env.example .env
+# PowerShell
+Copy-Item .env.example .env
 npm run dev
 ```
 
@@ -21,10 +24,10 @@ npm run dev
 ## 常用命令
 
 ```bash
-npm test          # Vitest（shared + server + integration）
-npm run typecheck # 三个 workspace 的类型检查
+npm test          # Vitest（shared + server + integration + toolchain）
+npm run typecheck # shared + server + web + 根 tests/scripts 的类型检查
 npm run build     # server (tsup) + web (vite)
-npm run e2e       # Playwright（后续任务启用）
+npm run e2e       # Playwright（Task 48 配置后可用；当前会失败）
 ```
 
 ## 说明
