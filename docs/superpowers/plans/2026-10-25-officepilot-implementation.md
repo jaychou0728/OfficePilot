@@ -259,6 +259,8 @@ git commit -m "chore: initialize workspace and toolchain"
 
 ### Task 2: 共享契约（zod / 错误码 / SSE）
 
+> **执行状态（2026-10-25）**：已完成并强化（提交 `1bc42d1` + `bfd8e8e`）。最终实现以 `packages/shared` 为准：SSE 使用 `SseEventSchema` 运行时校验；`serializeSse` 不在 data 中重复 `type`，result 事件直接输出 `RunResult`；共享测试 13 个。下方代码是初版快照，若与仓库冲突以仓库为准。
+
 **Files:**
 - Create: `packages/shared/package.json`
 - Create: `packages/shared/tsconfig.json`
@@ -4114,6 +4116,8 @@ git commit -m "feat(runs): add run manager and SSE replay route"
 ```ts
 import { describe, it, expect } from 'vitest';
 import { buildApp } from '../src/app.js';
+import { toDocumentDto } from '../src/routes/documents.js';
+import type { DocumentRow } from '../src/db/documents.js';
 
 describe('documents routes', () => {
   it('lists documents', async () => {
@@ -4122,6 +4126,18 @@ describe('documents routes', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().items).toEqual([]);
     await app.close();
+  });
+
+  it('maps a DB row to the public document DTO', () => {
+    const row: DocumentRow = {
+      id: 'd1', name: 'a.pdf', type: 'PDF', category: '制度', size: 10, sha256: 'h',
+      status: 'ready', stage: null, progress: 100, errorCode: null, errorMessage: null,
+      pages: 1, chunkCount: 3, filePath: 'x', createdAt: 'now', updatedAt: 'now', indexedAt: 'now',
+    };
+    expect(toDocumentDto(row)).toEqual({
+      id: 'd1', name: 'a.pdf', type: 'PDF', category: '制度', size: 10,
+      status: 'ready', stage: null, progress: 100, chunks: 3, error: null, updatedAt: 'now',
+    });
   });
 });
 ```
@@ -4137,15 +4153,23 @@ Expected: FAIL。
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { DocumentCategorySchema } from '@officepilot/shared';
-import { listDocuments, getDocument } from '../db/documents.js';
+import { listDocuments, getDocument, type DocumentRow } from '../db/documents.js';
 import { getChunks } from '../db/chunks.js';
 import type { createDocumentService } from '../ingest/service.js';
 
 type Deps = { db: import('node:sqlite').DatabaseSync; documents: ReturnType<typeof createDocumentService> };
 
+export function toDocumentDto(row: DocumentRow) {
+  return {
+    id: row.id, name: row.name, type: row.type, category: row.category, size: row.size,
+    status: row.status, stage: row.stage, progress: row.progress,
+    chunks: row.chunkCount, error: row.errorMessage, updatedAt: row.updatedAt,
+  };
+}
+
 export function documentRoutes(app: FastifyInstance, deps: Deps) {
   app.get('/api/documents', async () => {
-    const items = listDocuments(deps.db);
+    const items = listDocuments(deps.db).map(toDocumentDto);
     return { items, total: items.length };
   });
 
@@ -4153,7 +4177,7 @@ export function documentRoutes(app: FastifyInstance, deps: Deps) {
     const { id } = request.params as { id: string };
     const doc = getDocument(deps.db, id);
     if (!doc) return reply.code(404).send({ error: { code: 'NOT_FOUND', message: '资源不存在', retryable: false, requestId: request.id } });
-    return { document: doc };
+    return { document: toDocumentDto(doc) };
   });
 
   app.post('/api/documents', async (request, reply) => {
@@ -4162,7 +4186,7 @@ export function documentRoutes(app: FastifyInstance, deps: Deps) {
     const buffer = await data.toBuffer();
     const category = DocumentCategorySchema.parse((data.fields.category as { value?: string } | undefined)?.value ?? '制度');
     const doc = await deps.documents.upload({ name: data.filename, buffer, category });
-    return reply.code(202).send({ document: doc });
+    return reply.code(202).send({ document: toDocumentDto(doc) });
   });
 
   app.delete('/api/documents/:id', async (request, reply) => {
@@ -4171,7 +4195,7 @@ export function documentRoutes(app: FastifyInstance, deps: Deps) {
     return reply.code(204).send();
   });
 
-  app.get('/api/documents/:id/chunks', async (request, reply) => {
+  app.get('/api/documents/:id/chunks', async (request) => {
     const { id } = request.params as { id: string };
     const query = request.query as { offset?: string; limit?: string };
     const chunks = getChunks(deps.db, id);
@@ -4184,7 +4208,8 @@ export function documentRoutes(app: FastifyInstance, deps: Deps) {
     const { id } = request.params as { id: string };
     const result = await deps.documents.reindex(id);
     if (result.skipped) return reply.code(200).send({ skipped: true });
-    return reply.code(202).send({ document: getDocument(deps.db, id) });
+    const doc = getDocument(deps.db, id);
+    return reply.code(202).send({ document: doc ? toDocumentDto(doc) : null });
   });
 }
 ```
@@ -4279,14 +4304,18 @@ export async function publicRoutes(app: FastifyInstance) {
 在 `app.ts` 中注册错误处理：
 
 ```ts
+import { AppError, ERROR_CODES } from '@officepilot/shared';
+
 app.setErrorHandler((error, request, reply) => {
-  const code = (error as { code?: string }).code ?? 'INTERNAL';
-  const status = (error as { status?: number }).status ?? 500;
+  const appError = error instanceof AppError ? error : null;
+  const code = appError?.code ?? 'INTERNAL';
+  const status = appError?.status ?? 500;
+  const retryable = appError?.retryable ?? ERROR_CODES.INTERNAL.retryable;
   reply.code(status).send({
     error: {
       code,
       message: status >= 500 && code === 'INTERNAL' ? '服务内部错误' : error.message,
-      retryable: status >= 500,
+      retryable,
       requestId: request.id,
     },
   });
@@ -4526,7 +4555,7 @@ export function useRunStream() {
       const event = JSON.parse(e.data);
       setState((s) => ({ ...s, timeline: [...s.timeline.filter((n) => n.node !== event.node), event] }));
     });
-    es.addEventListener('result', (e) => setState((s) => ({ ...s, result: JSON.parse(e.data).result })));
+    es.addEventListener('result', (e) => setState((s) => ({ ...s, result: JSON.parse(e.data) as RunResult })));
     es.addEventListener('error', (e) => { if (e.data) setState((s) => ({ ...s, error: JSON.parse(e.data), status: 'error' })); });
     es.addEventListener('done', () => { es.close(); setState((s) => ({ ...s, status: 'done' })); });
   }, []);
