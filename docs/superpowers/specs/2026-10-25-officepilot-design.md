@@ -330,6 +330,7 @@ CREATE TABLE documents(
   name TEXT NOT NULL,
   type TEXT NOT NULL,               -- PDF|DOCX|XLSX|MD|TXT|CSV
   category TEXT NOT NULL,           -- 制度|会议|表格|合同
+  file_path TEXT NOT NULL DEFAULT '',
   size INTEGER NOT NULL,
   sha256 TEXT NOT NULL UNIQUE,
   status TEXT NOT NULL,             -- queued|parsing|chunking|embedding|ready|failed
@@ -341,18 +342,25 @@ CREATE TABLE documents(
 
 CREATE TABLE chunks(
   id TEXT PRIMARY KEY,
-  doc_id TEXT NOT NULL REFERENCES documents(id),
+  doc_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
   ordinal INTEGER NOT NULL,
   text TEXT NOT NULL,
   page INTEGER, sheet TEXT, section TEXT,
   start_offset INTEGER, end_offset INTEGER,
   embedding BLOB, dim INTEGER,
-  created_at TEXT
+  created_at TEXT,
+  UNIQUE(doc_id, ordinal)
 );
 
 CREATE VIRTUAL TABLE chunks_fts USING fts5(
   chunk_id UNINDEXED, tokens, tokenize='unicode61'
 );
+
+CREATE TRIGGER chunks_after_delete_fts
+AFTER DELETE ON chunks
+BEGIN
+  DELETE FROM chunks_fts WHERE chunk_id = old.id;
+END;
 
 CREATE TABLE runs(
   id TEXT PRIMARY KEY,

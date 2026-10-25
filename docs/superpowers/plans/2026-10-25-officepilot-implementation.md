@@ -1097,7 +1097,9 @@ git commit -m "chore: add dev smoke test and README"
 
 ### Task 6: SQLite schema 与迁移
 
-> 接上真实 DB 后：把 `buildApp` 的 `dbOk` stub 替换为 `openDatabase` 的连通性检查；`GET /api/health` 的 `embeddingDim` 从 `app_meta.embedding_dim` 读取（未建库时保持 null）。
+> **执行状态（2026-10-25）**：已完成（提交 `3bd47a4` + `9ba2bad`）。最终 schema 包含 `file_path`、`ON DELETE CASCADE`、`UNIQUE(doc_id,ordinal)` 和 `chunks_after_delete_fts` 触发器；迁移在事务中执行，带 `busy_timeout=5000`，open 失败会关闭连接；测试 4 个（含 app_meta、FTS 级联清理、文件库幂等迁移）。下方是初版快照，以 `apps/server/src/db` 为准。
+>
+> 接上真实 DB 后：把 `buildApp` 的 `dbOk` stub 替换为 `openDatabase` 的连通性检查；`GET /api/health` 的 `embeddingDim` 从 `app_meta.embedding_dim` 读取（未建库时保持 null）。删除文档时 FTS 行由触发器自动清理，`deleteDocument` 可以直接 `DELETE documents`。
 
 **Files:**
 - Create: `apps/server/src/db/schema.ts`
