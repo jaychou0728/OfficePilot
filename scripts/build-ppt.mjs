@@ -1,10 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import pptxgen from 'pptxgenjs';
 
 const repoRoot = fileURLToPath(new URL('..', import.meta.url));
 const outFile = path.join(repoRoot, 'docs', 'OfficePilot-作品介绍.pptx');
+const COMMITS = execSync('git rev-list --count HEAD', { cwd: repoRoot }).toString().trim();
 
 const C = {
   ink: '1B1A17',
@@ -154,6 +156,9 @@ function newSlide(bg = C.paper) {
     });
   });
 
+  addText(slide, '团队信息：单人项目 · 姓名：________', {
+    x: 0.9, y: 6.24, w: 8.0, h: 0.26, fontSize: 9, color: C.ink3,
+  });
   addText(slide, '2026-10-25 · feat/officepilot · Node 24 / Fastify 5 / React 19 / LangGraph', {
     x: 0.9, y: 6.62, w: 10.5, h: 0.26, fontSize: 9, color: C.ink3,
   });
@@ -593,7 +598,7 @@ function newSlide(bg = C.paper) {
     'RAG-EVAL · 10 题评测明细',
     'TEST-REPORT · 162 测试 / E2E / 评测',
     'ACCEPTANCE · 12 项验收状态',
-    'AI-CODING-LOG · 76 个提交与缺陷记录',
+    `AI-CODING-LOG · ${COMMITS} 个提交与缺陷记录`,
     'DEMO-SCRIPT · 6 分钟话术与兜底',
     'Dockerfile / .dockerignore / DEPLOY',
     '作品介绍 PPT（8 页）',
@@ -621,7 +626,7 @@ function newSlide(bg = C.paper) {
     'mock / demo provider 与真实模型质量不同',
     '演示阈值 0.1，真实默认 0.55',
     'Docker 本机未安装，未构建 / 未运行',
-    '演示录屏与现场彩排未完成',
+    '现场彩排：E2E 6/6 覆盖主流程；录屏未录制（可选）',
   ];
   limits.forEach((item, index) => {
     addText(slide, '—', {

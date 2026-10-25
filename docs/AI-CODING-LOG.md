@@ -37,7 +37,7 @@
 
 ## 3. 阶段时间线与提交
 
-全部 76 个提交（`git log --oneline --reverse`，时间 2026-10-25 18:57–22:40）：
+全部 80+ 个提交（`git log --oneline --reverse`，时间 2026-10-25 18:57 起）：
 
 ### Phase 0 · 基础设施与共享契约（18:57–19:55）
 
@@ -285,5 +285,5 @@ f8d2fe7 fix(demo): cite available sources in qa answers
 - **阈值**：mock / demo 服务端强制 `0.1`，真实 provider 默认 `0.55`；两者差异在 README、架构文档、评测报告中均明示。
 - **错误处理**：统一错误码 + 可重试标记；SSE `error` 后仍发 `done`；前端区分服务端错误与传输断线，后者用 `GET /api/runs/:id` 对账。
 - **Docker**：本机没有 Docker，**没有构建或运行过镜像**；只交付 Dockerfile / .dockerignore / DEPLOY 命令，不写「构建成功」。
-- **未完成项**：真实模型联调、录屏、现场彩排、CSV / Markdown 下载文件内容的自动化比对。见 TEST-REPORT §10。
+- **未完成项**：真实模型联调（无 Key）、演示录屏（可选）、CSV / Markdown 下载文件字节级自动比对。现场主流程已由 E2E 6/6 与生产启动检查覆盖；见 TEST-REPORT §10。
 - **AI 输出不是结论**：上述缺陷都由测试、类型检查、代码审查或真实启动探测发现；每次修复都有对应提交或验证记录。AI 负责生成与加速，验收标准仍是可执行证据。

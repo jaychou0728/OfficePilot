@@ -12,6 +12,8 @@
 **Visual source:** `OfficePilot-原型.html`（交互与视觉基准）
 **Deadline:** 2026-11-10
 
+> **实现完成（2026-10-25）**：Phase 0–8 全部完成。最终基线：162 单元/集成测试通过、typecheck 0、构建成功、Playwright E2E 6/6、RAG 评测 hit@3 9/9 + 边界拒答通过、生产启动与静态页面验证通过。Dockerfile 已交付但本机无 Docker，未构建。详细验收见 `docs/ACCEPTANCE.md`，交付清单见 `README.md`。
+
 ---
 
 ## 执行约定
