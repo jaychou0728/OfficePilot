@@ -259,7 +259,7 @@ git commit -m "chore: initialize workspace and toolchain"
 
 ### Task 2: 共享契约（zod / 错误码 / SSE）
 
-> **执行状态（2026-10-25）**：已完成并强化（提交 `1bc42d1` + `bfd8e8e`）。最终实现以 `packages/shared` 为准：SSE 使用 `SseEventSchema` 运行时校验；`serializeSse` 不在 data 中重复 `type`，result 事件直接输出 `RunResult`；共享测试 13 个。下方代码是初版快照，若与仓库冲突以仓库为准。
+> **执行状态（2026-10-25）**：已完成并强化（提交 `1bc42d1` + `bfd8e8e` + `f94246c`）。最终实现以 `packages/shared` 为准：SSE 使用 `SseEventSchema` 运行时校验；`serializeSse` 不在 data 中重复 `type`，result 事件直接输出 `RunResult`；`parseSseEvent` 支持从持久化 payload + type 还原事件；共享测试 15 个。下方代码是初版快照，若与仓库冲突以仓库为准。
 
 **Files:**
 - Create: `packages/shared/package.json`
@@ -688,8 +688,15 @@ export function healthRoutes(app: FastifyInstance, config: AppConfig, dbOk: () =
 
 ```ts
 import Fastify, { type FastifyInstance } from 'fastify';
-import { loadConfig } from './config.js';
+import { loadConfig, type AppConfig } from './config.js';
 import { healthRoutes } from './routes/health.js';
+
+declare module 'fastify' {
+  interface FastifyInstance {
+    config: AppConfig;
+    dbOk: () => boolean;
+  }
+}
 
 export type BuildOptions = {
   dbPath?: string;
@@ -4050,7 +4057,7 @@ export function createRunManager(options: {
 
 ```ts
 import type { FastifyInstance } from 'fastify';
-import { CreateRunSchema, serializeSse } from '@officepilot/shared';
+import { CreateRunSchema, parseSseEvent, serializeSse, type SseEvent } from '@officepilot/shared';
 import { getEventsAfter } from '../db/runs.js';
 import type { createRunManager } from '../runs/manager.js';
 
@@ -4074,7 +4081,7 @@ export function runRoutes(app: FastifyInstance, manager: ReturnType<typeof creat
     const last = Number(request.headers['last-event-id'] ?? 0);
     reply.raw.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
     for (const event of getEventsAfter(db, id, last)) {
-      reply.raw.write(serializeSse(event.seq, event.payload as never));
+      reply.raw.write(serializeSse(event.seq, parseSseEvent(event.payload, event.type as SseEvent['type'])));
     }
     const unsubscribe = manager.subscribe(id, (seq, event) => {
       reply.raw.write(serializeSse(seq, event));

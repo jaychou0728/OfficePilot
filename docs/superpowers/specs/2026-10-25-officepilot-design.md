@@ -677,11 +677,11 @@ data: {"text":"一线城市住宿费上限为 "}
 
 id: 9
 event: citation
-data: {"sources":[{"n":1,"docName":"员工差旅费用管理办法 v3.2","chunkId":"chk_12","page":4,"score":0.91,"snippet":"……"}]}
+data: {"sources":[{"n":1,"docId":"doc_01J9Z3","docName":"员工差旅费用管理办法 v3.2","chunkId":"chk_12","page":4,"score":0.91,"snippet":"……"}]}
 
 id: 10
 event: result
-data: {"type":"qa","answer":"……","sources":[{"n":1,"docName":"员工差旅费用管理办法 v3.2","chunkId":"chk_12","page":4,"score":0.91,"snippet":"一线城市住宿费每人每晚不超过 650 元"}],"confidence":0.93}
+data: {"type":"qa","answer":"……","sources":[{"n":1,"docId":"doc_01J9Z3","docName":"员工差旅费用管理办法 v3.2","chunkId":"chk_12","page":4,"score":0.91,"snippet":"一线城市住宿费每人每晚不超过 650 元"}],"confidence":0.93}
 
 id: 11
 event: done
@@ -701,7 +701,7 @@ data: {"runId":"run_01J9Z8","usage":{"promptTokens":812,"completionTokens":318}}
     "id": "run_01J9Z8",
     "skill": "qa",
     "status": "succeeded",
-    "result": { "type": "qa", "answer": "……", "sources": [{"n":1,"docName":"员工差旅费用管理办法 v3.2","chunkId":"chk_12","page":4,"score":0.91,"snippet":"一线城市住宿费每人每晚不超过 650 元"}], "confidence": 0.93 },
+    "result": { "type": "qa", "answer": "……", "sources": [{"n":1,"docId":"doc_01J9Z3","docName":"员工差旅费用管理办法 v3.2","chunkId":"chk_12","page":4,"score":0.91,"snippet":"一线城市住宿费每人每晚不超过 650 元"}], "confidence": 0.93 },
     "error": null,
     "usage": { "promptTokens": 812, "completionTokens": 318 },
     "timeline": [
