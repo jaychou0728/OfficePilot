@@ -1095,6 +1095,10 @@ git commit -m "chore: add dev smoke test and README"
 
 # Phase 1 · 数据层
 
+> **Phase 1 完成（2026-10-25）**：Tasks 6–11 已实现并审查，提交：
+> schema `3bd47a4`/`9ba2bad`、tokenizer `7ff76d5`/`173ca09`、documents `6039d5d`/`eaec52c`、chunks `8c452ab`/`203487a`、cache `37e3709`/`1cf57c5`、runs `ab955b1`/`a44c35a`。
+> 全量测试 52 passed，`npm run typecheck` exit 0。关键加固：FTS 级联清理触发器、混合脚本分词、embedding 维度/损坏 BLOB 校验、事件写入可嵌套事务、timeline 从 node 事件回放。
+
 ### Task 6: SQLite schema 与迁移
 
 > **执行状态（2026-10-25）**：已完成（提交 `3bd47a4` + `9ba2bad`）。最终 schema 包含 `file_path`、`ON DELETE CASCADE`、`UNIQUE(doc_id,ordinal)` 和 `chunks_after_delete_fts` 触发器；迁移在事务中执行，带 `busy_timeout=5000`，open 失败会关闭连接；测试 4 个（含 app_meta、FTS 级联清理、文件库幂等迁移）。下方是初版快照，以 `apps/server/src/db` 为准。
