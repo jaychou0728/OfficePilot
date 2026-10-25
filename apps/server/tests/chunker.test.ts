@@ -34,4 +34,23 @@ describe('chunker', () => {
     expect(chunks.length).toBeGreaterThan(1);
     expect(chunks.every((chunk) => chunk.sheet === '长表')).toBe(true);
   });
+
+  it('offsets reconstruct the trimmed chunk text', () => {
+    const text = 'line one\n   line two   \nline three';
+    const chunks = chunkText(text, 12, 2);
+    expect(chunks.length).toBeGreaterThan(0);
+    for (const chunk of chunks) {
+      expect(text.slice(chunk.startOffset, chunk.endOffset)).toBe(chunk.text);
+    }
+  });
+
+  it('falls back to doc.text when pages and sheets are empty', () => {
+    const chunks = chunkDocument({ text: 'a'.repeat(50), pages: [], sheets: [] }, 20, 5);
+    expect(chunks.length).toBeGreaterThan(0);
+    expect(chunks.every((chunk) => chunk.text.length <= 20)).toBe(true);
+  });
+
+  it('returns no chunks for empty or whitespace text', () => {
+    expect(chunkText('   \n ', 10, 2)).toEqual([]);
+  });
 });

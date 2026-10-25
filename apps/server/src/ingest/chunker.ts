@@ -11,6 +11,8 @@ export type Chunk = {
 };
 
 export function chunkText(text: string, size = 800, overlap = 120): Chunk[] {
+  size = Math.max(1, Math.trunc(size));
+  overlap = Math.max(0, Math.min(Math.trunc(overlap), size - 1));
   const normalized = text.replace(/\r\n/g, '\n').trim();
   if (!normalized) return [];
   const chunks: Chunk[] = [];
@@ -27,9 +29,17 @@ export function chunkText(text: string, size = 800, overlap = 120): Chunk[] {
       );
       if (cut > size * 0.6) end = start + cut + 1;
     }
-    const piece = normalized.slice(start, end).trim();
+    const raw = normalized.slice(start, end);
+    const piece = raw.trim();
     if (piece) {
-      chunks.push({ ordinal: chunks.length, text: piece, startOffset: start, endOffset: end });
+      const leading = raw.length - raw.trimStart().length;
+      const trailing = raw.length - raw.trimEnd().length;
+      chunks.push({
+        ordinal: chunks.length,
+        text: piece,
+        startOffset: start + leading,
+        endOffset: end - trailing,
+      });
     }
     if (end >= normalized.length) break;
     start = Math.max(start + 1, end - overlap);
@@ -53,6 +63,10 @@ export function chunkDocument(doc: ParsedDocument, size = 800, overlap = 120): C
     for (const chunk of chunkText(page.text, size, overlap)) {
       out.push({ ...chunk, ordinal: out.length, page: page.page });
     }
+  }
+
+  if (!out.length && doc.text.trim()) {
+    return chunkText(doc.text, size, overlap);
   }
   return out;
 }
