@@ -1,0 +1,24 @@
+:root {
+  --paper: #f4f1ea;
+  --surface: #fbfaf6;
+  --surface-2: #efebe2;
+  --rail: #ece6d9;
+  --chat: #ffffff;
+  --insp: #f7f3ea;
+  --topbar: #1b1a17;
+  --ink: #1b1a17;
+  --ink-2: #4c483f;
+  --ink-3: #7a7468;
+  --line: #dcd5c8;
+  --line-strong: #b8af9e;
+  --accent: #b8421d;
+  --accent-ink: #8f2f12;
+  --accent-soft: #f0e1d8;
+  --green: #2e6b4f;
+  --green-soft: #e2ede6;
+  --amber: #96631b;
+  --amber-soft: #f3e8d5;
+  --font-ui: "MiSans", "HarmonyOS Sans SC", "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+  --font-display: "Source Han Serif SC", "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  --font-mono: "Cascadia Code", "JetBrains Mono", "Consolas", "Courier New", monospace;
+}
