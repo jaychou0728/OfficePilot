@@ -23,10 +23,10 @@ const FIXTURES: Array<{ name: string; category: DocumentCategory }> = [
 ];
 
 async function main(): Promise<void> {
-  const dataDir = path.resolve(process.env.DATA_DIR ?? 'data');
+  const config = loadConfig(process.env);
+  const dataDir = config.dataDir;
   fs.mkdirSync(dataDir, { recursive: true });
   const db = openDatabase(path.join(dataDir, 'officepilot.db'));
-  const config = loadConfig(process.env);
   const provider = config.LLM_PROVIDER === 'mock'
     ? createDemoProvider()
     : createOpenAiProvider({
