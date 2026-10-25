@@ -47,4 +47,27 @@ describe('runs repository', () => {
   it('returns null for a missing run', () => {
     expect(getRun(db, 'missing')).toBeNull();
   });
+
+  it('accepts an omitted templateId', () => {
+    const run = createRun(db, { skill: 'qa', input: 'q', docIds: [] });
+    expect(run.templateId).toBeNull();
+  });
+
+  it('can append inside a caller-held transaction', () => {
+    const run = createRun(db, { skill: 'qa', input: 'q', docIds: [], templateId: null });
+    db.exec('BEGIN');
+    appendRunEvent(db, run.id, 'node', { node: 'router' });
+    db.exec('COMMIT');
+    expect(getEventsAfter(db, run.id, 0)).toHaveLength(1);
+  });
+
+  it('clears errors and derives timeline from node events', () => {
+    const run = createRun(db, { skill: 'qa', input: 'q', docIds: [], templateId: null });
+    failRun(db, run.id, 'LLM_TIMEOUT', 'timeout');
+    appendRunEvent(db, run.id, 'node', { node: 'router', status: 'done', ms: 10 });
+    finishRun(db, run.id, 'succeeded', { type: 'qa' }, { promptTokens: 1, completionTokens: 2 });
+    const row = getRun(db, run.id)!;
+    expect(row.errorCode).toBeNull();
+    expect(row.timeline).toEqual([{ node: 'router', status: 'done', ms: 10 }]);
+  });
 });
