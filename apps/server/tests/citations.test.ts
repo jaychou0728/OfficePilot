@@ -45,6 +45,28 @@ describe('citation validation', () => {
     expect(validateCitations('预算 1200 元[1]', [src(1, '预算 1,200 元')]).ok).toBe(true);
   });
 
+  it('requires dates to be grounded as a whole date', () => {
+    expect(validateCitations('日期 2025-11-25[1]', [src(1, '发布于 2025 年 11 月 25 日')]).ok).toBe(true);
+    expect(validateCitations('日期 2025-11-25[1]', [src(1, '发布于 2025 年，费用 11 元，人数 25 人')]).ok).toBe(false);
+  });
+
+  it('grounds list numbers without destroying separators', () => {
+    const result = validateCitations('标准 650 元[1]', [src(1, '标准 650，900 元')]);
+    expect(result.ok).toBe(true);
+  });
+
+  it('rejects negative and full-width mismatches correctly', () => {
+    expect(validateCitations('价格 -650 元[1]', [src(1, '价格 650 元')]).ok).toBe(false);
+    expect(validateCitations('价格 ６５０ 元[1]', [src(1, '价格 650 元')]).ok).toBe(true);
+  });
+
+  it('reports citation coverage', () => {
+    const sources = [src(1, 'a 650'), src(2, 'b 900')];
+    expect(validateCitations('650[1] 900[2]', sources).coverage).toBe(1);
+    expect(validateCitations('650[1]', sources).coverage).toBe(1);
+    expect(validateCitations('650[1] 900[2]', [sources[0]]).coverage).toBe(0.5);
+  });
+
   it('computes a bounded confidence', () => {
     expect(confidence(0.9, 1, true)).toBeCloseTo(0.95, 2);
     expect(confidence(0, 0, false)).toBe(0);

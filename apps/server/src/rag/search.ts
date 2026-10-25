@@ -10,6 +10,7 @@ export type VectorHit = {
   vector: number;
 };
 
+/** raw comes from SQLite FTS5 bm25(); more negative = more relevant. */
 export type FtsHit = { chunkId: string; raw: number };
 
 export type RankedHit = VectorHit & { bm25: number; hybrid: number };
@@ -23,12 +24,14 @@ export function hybridRank(input: {
   const limit = Math.max(0, Math.trunc(input.limit));
   if (!limit || !input.vectorHits.length) return [];
 
-  const ftsScores = input.ftsHits.map((hit) => -hit.raw);
+  const candidateIds = new Set(input.vectorHits.map((hit) => hit.chunkId));
+  const scopedFts = input.ftsHits.filter((hit) => candidateIds.has(hit.chunkId));
+  const ftsScores = scopedFts.map((hit) => -hit.raw);
   const min = Math.min(...ftsScores, 0);
   const max = Math.max(...ftsScores, 0);
   const normalize = (score: number) =>
     max === min ? (score > 0 ? 1 : 0) : (score - min) / (max - min);
-  const bm25Map = new Map(input.ftsHits.map((hit) => [hit.chunkId, normalize(-hit.raw)]));
+  const bm25Map = new Map(scopedFts.map((hit) => [hit.chunkId, normalize(-hit.raw)]));
 
   const merged = input.vectorHits
     .map((hit, index) => ({

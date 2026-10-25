@@ -33,6 +33,16 @@ describe('hybrid rank', () => {
     expect(hybridRank({ vectorHits: [v('a', 'd1', 0, 0.9)], ftsHits: [], threshold: 0.55, limit: 0 })).toEqual([]);
   });
 
+  it('normalizes bm25 only over candidate hits', () => {
+    const result = hybridRank({
+      vectorHits: [v('a', 'd1', 0, 0.9)],
+      ftsHits: [{ chunkId: 'z', raw: -10 }, { chunkId: 'a', raw: -1 }],
+      threshold: 0.55,
+      limit: 1,
+    });
+    expect(result[0].bm25).toBe(1);
+  });
+
   it('does not boost when there are no FTS hits', () => {
     const result = hybridRank({
       vectorHits: [v('a', 'd1', 0, 0.8), v('b', 'd2', 0, 0.9)],

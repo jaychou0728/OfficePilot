@@ -32,6 +32,26 @@ describe('mapReduceSummary', () => {
     expect(combined).toBe(false);
   });
 
+  it('falls back to batch size 1 for non-finite input', async () => {
+    let calls = 0;
+    const result = await mapReduceSummary(['a', 'b'], {
+      summarize: async () => { calls++; return 's'; },
+      combine: async (parts) => parts.join('|'),
+    }, NaN);
+    expect(calls).toBe(2);
+    expect(result).toBe('s|s');
+  });
+
+  it('ignores whitespace-only texts', async () => {
+    let calls = 0;
+    const result = await mapReduceSummary(['   '], {
+      summarize: async () => { calls++; return 'x'; },
+      combine: async () => 'y',
+    });
+    expect(result).toBe('');
+    expect(calls).toBe(0);
+  });
+
   it('clamps a non-positive batch size to 1', async () => {
     const calls: string[] = [];
     const result = await mapReduceSummary(['a', 'b'], {

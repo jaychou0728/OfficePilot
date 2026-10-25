@@ -6,12 +6,13 @@ export async function mapReduceSummary(
   },
   batchSize = 6,
 ): Promise<string> {
-  if (!texts.length) return '';
-  const size = Math.max(1, Math.trunc(batchSize));
+  const meaningful = texts.filter((text) => text.trim().length > 0);
+  if (!meaningful.length) return '';
+  const size = Number.isFinite(batchSize) ? Math.max(1, Math.trunc(batchSize)) : 1;
   const parts: string[] = [];
 
-  for (let i = 0; i < texts.length; i += size) {
-    parts.push(await io.summarize(texts.slice(i, i + size).join('\n\n')));
+  for (let i = 0; i < meaningful.length; i += size) {
+    parts.push(await io.summarize(meaningful.slice(i, i + size).join('\n\n')));
   }
 
   return parts.length === 1 ? parts[0] : io.combine(parts);
