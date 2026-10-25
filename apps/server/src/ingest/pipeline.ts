@@ -5,7 +5,7 @@ import type { EmbeddingProvider } from '../gateway/types.js';
 import { parseDocument } from './parsers.js';
 import { chunkDocument } from './chunker.js';
 import { updateDocumentStatus, getDocument } from '../db/documents.js';
-import { insertChunks } from '../db/chunks.js';
+import { deleteChunksByDoc, insertChunks } from '../db/chunks.js';
 import { getCachedEmbedding, putCachedEmbedding } from '../db/cache.js';
 
 export type IngestContext = {
@@ -52,6 +52,7 @@ export async function ingestDocument(ctx: IngestContext, docId: string): Promise
     }
 
     updateDocumentStatus(ctx.db, docId, { status: 'embedding', stage: '写入索引', progress: 90 });
+    deleteChunksByDoc(ctx.db, docId);
     insertChunks(ctx.db, docId, chunks, vectors);
     updateDocumentStatus(ctx.db, docId, { status: 'ready', stage: '已入库', progress: 100, chunkCount: chunks.length });
   } catch (error) {

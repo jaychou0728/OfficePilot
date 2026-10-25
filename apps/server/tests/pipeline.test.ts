@@ -43,4 +43,19 @@ describe('ingestion pipeline', () => {
     expect(failed.errorCode).toBe('DOC_PARSE_FAILED');
     expect(failed.errorMessage).toBeTruthy();
   });
+
+  it('re-ingests an existing document without duplicate chunks', async () => {
+    const doc = createDocument(db, { name: 'again.md', type: 'MD', category: '制度', size: 20, sha256: 'h3', filePath: 'x' });
+    const ctx = {
+      db,
+      provider: createMockProvider(),
+      fileLoader: async () => Buffer.from('一线城市住宿 650 元。'),
+    };
+    await ingestDocument(ctx, doc.id);
+    await ingestDocument(ctx, doc.id);
+
+    const row = getDocument(db, doc.id)!;
+    expect(row.status).toBe('ready');
+    expect(getChunks(db, doc.id)).toHaveLength(row.chunkCount);
+  });
 });
