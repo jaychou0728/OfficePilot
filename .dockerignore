@@ -1,0 +1,36 @@
+# dependencies / build output
+node_modules
+**/node_modules
+dist
+**/dist
+coverage
+*.tsbuildinfo
+
+# runtime data and local state
+data
+data/**
+_temp
+*.log
+
+# secrets (keep the example)
+.env
+.env.*
+!.env.example
+
+# test artifacts
+playwright-report
+test-results
+
+# git and local docs / large root files not needed by the image
+.git
+.gitignore
+docs
+playwright.config.ts
+vitest.config.ts
+tests
+apps/server/tests
+packages/shared/tests
+/*.html
+/*.pdf
+README.md
+OfficePilot-原型.html

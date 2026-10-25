@@ -2,8 +2,13 @@
   "name": "officepilot",
   "private": true,
   "type": "module",
-  "workspaces": ["apps/*", "packages/*"],
-  "engines": { "node": ">=24" },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "dev": "concurrently -k -n server,web -c green,cyan \"npm -w apps/server run dev\" \"npm -w apps/web run dev\"",
     "build": "npm -w apps/server run build && npm -w apps/web run build",
@@ -15,13 +20,15 @@
     "demo": "npm run demo:seed && cross-env MATCH_THRESHOLD=0.1 npm run dev",
     "demo:offline": "cross-env DEMO_MODE=true npm run demo",
     "e2e": "playwright test",
-    "eval": "tsx scripts/eval-rag.ts"
+    "eval": "tsx scripts/eval-rag.ts",
+    "ppt": "node scripts/build-ppt.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "@types/node": "^24.0.0",
     "concurrently": "^9.1.0",
     "cross-env": "^7.0.3",
+    "pptxgenjs": "^4.0.1",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "vitest": "^3.2.7"
