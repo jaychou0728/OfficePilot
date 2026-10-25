@@ -4,15 +4,23 @@ body {
   margin: 0; background: var(--paper); color: var(--ink);
   font-family: var(--font-ui); font-size: 14px; line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 button, input, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+::selection { background: var(--accent-soft); }
 
-.app { height: 100vh; display: flex; flex-direction: column; }
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+.app { height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
 .topbar {
   height: 57px; flex: 0 0 57px; display: flex; align-items: center;
   justify-content: space-between; padding: 0 20px; background: var(--topbar); color: var(--paper);
+  border-bottom: 1px solid #0e0d0b;
 }
 .workspace { display: grid; grid-template-columns: 296px minmax(0, 1fr) 372px; flex: 1; min-height: 0; }
 .library { background: var(--rail); border-right: 1px solid var(--line); min-height: 0; overflow: auto; }

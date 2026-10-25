@@ -3,13 +3,7 @@
   "compilerOptions": {
     "jsx": "react-jsx",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["vite/client"],
-    "baseUrl": ".",
-    "paths": {
-      "vite": ["./node_modules/vite"],
-      "vite/*": ["./node_modules/vite/*"],
-      "@officepilot/shared": ["../../packages/shared/src/index.ts"]
-    }
+    "types": ["vite/client"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts"]
 }
