@@ -7,8 +7,8 @@ import { AppError, ERROR_CODES } from '@officepilot/shared';
 import { loadConfig, type AppConfig } from './config.js';
 import { openDatabase } from './db/database.js';
 import { getDocument } from './db/documents.js';
+import { createDemoProvider } from './gateway/demo.js';
 import { createGateway } from './gateway/index.js';
-import { createMockProvider } from './gateway/mock.js';
 import { createOpenAiProvider } from './gateway/openai.js';
 import { createDocumentService } from './ingest/service.js';
 import { documentRoutes } from './routes/documents.js';
@@ -32,10 +32,10 @@ export type BuildOptions = {
 
 export function createGatewayFromConfig(config: AppConfig) {
   if (config.LLM_PROVIDER === 'mock') {
-    const mock = createMockProvider();
+    const demo = createDemoProvider();
     return createGateway({
-      chat: { primary: mock, demo: config.demoMode ? mock : undefined },
-      embed: { primary: mock, demo: config.demoMode ? mock : undefined },
+      chat: { primary: demo, demo: config.demoMode ? demo : undefined },
+      embed: { primary: demo, demo: config.demoMode ? demo : undefined },
       retry: { attempts: 0, delaysMs: [] },
     });
   }
@@ -60,7 +60,7 @@ export function createGatewayFromConfig(config: AppConfig) {
         timeoutMs: config.LLM_TIMEOUT_MS,
       })
     : undefined;
-  const demo = config.demoMode ? createMockProvider() : undefined;
+  const demo = createDemoProvider();
 
   return createGateway({
     chat: { primary: chat, fallback, demo },
