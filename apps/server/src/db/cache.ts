@@ -4,6 +4,7 @@ export function getCachedEmbedding(db: DatabaseSync, hash: string, model: string
   const row = db.prepare('SELECT vector FROM embedding_cache WHERE hash=? AND model=? AND dim=?')
     .get(hash, model, dim) as { vector: Uint8Array } | undefined;
   if (!row) return null;
+  if (row.vector.byteLength !== dim * 4) throw new Error('corrupt embedding blob');
   return new Float32Array(row.vector.buffer, row.vector.byteOffset, row.vector.byteLength / 4);
 }
 

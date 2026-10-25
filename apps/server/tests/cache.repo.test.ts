@@ -25,4 +25,10 @@ describe('embedding cache', () => {
     expect(() => putCachedEmbedding(db, 'h3', 'model', 4, [1, 2])).toThrow();
     expect(() => putCachedEmbedding(db, 'h3', 'model', 4, [1, 2, 3, NaN])).toThrow();
   });
+
+  it('rejects a corrupt cached blob', () => {
+    db.prepare('INSERT INTO embedding_cache(hash,model,dim,vector,created_at) VALUES (?,?,?,?,?)')
+      .run('h4', 'model', 4, Buffer.from([1, 2]), new Date().toISOString());
+    expect(() => getCachedEmbedding(db, 'h4', 'model', 4)).toThrow(/corrupt/);
+  });
 });
