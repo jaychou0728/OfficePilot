@@ -786,6 +786,8 @@ git commit -m "feat(server): bootstrap fastify app with health route"
 
 ### Task 4: 前端骨架与设计 token
 
+> **执行状态（2026-10-25）**：已完成（提交 `3b2a57a` + `b294341`）。已统一到 Vite 7.3.7（消除 Vite 6/7 双版本与 tsconfig paths 临时方案）；最终代码还包含顶栏底边、`100dvh`、`::selection`、语义标签与 favicon。下方代码是初版快照，若与仓库冲突以 `apps/web` 为准。
+
 **Files:**
 - Create: `apps/web/package.json`
 - Create: `apps/web/tsconfig.json`
@@ -806,7 +808,7 @@ git commit -m "feat(server): bootstrap fastify app with health route"
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --port 5173",
+    "dev": "vite",
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "preview": "vite preview"
   },
@@ -822,7 +824,7 @@ git commit -m "feat(server): bootstrap fastify app with health route"
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^6.0.0"
+    "vite": "^7.3.7"
   }
 }
 ```
@@ -851,6 +853,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    strictPort: true,
     proxy: { '/api': 'http://127.0.0.1:3000' },
   },
   build: { outDir: 'dist' },
