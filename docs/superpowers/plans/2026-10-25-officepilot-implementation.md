@@ -1808,6 +1808,10 @@ git commit -m "feat(db): add runs and event repository with replay"
 
 # Phase 2 · 模型网关
 
+> **Phase 2 完成（2026-10-25）**：Tasks 12–14 已实现并审查，提交 OpenAI 客户端 `b77a1db`/`88df0c0`、mock `822b079`、网关 `f1e9d92`/`884bbce`。
+> 关键加固：调用方 signal 与配置超时合并（`AbortSignal.any`）、流内 error 事件抛出、`reader.cancel()` 释放连接、重试仅针对 429/5xx/timeout、Abort 立即停止、首 token 后不重试、chat/embedding provider 分离、demo provider 仅 `demoMode` 启用。
+> 待办：health 的真实 provider 探测与 `app_meta.embedding_dim` 在 Task 33 接线时完成；embedding fallback 必须与主 provider 同 model/dim（否则缓存键会误标），当前 app 接线只用 primary embedding；demo 的“只回放录制问题”在 Task 47 完成。
+
 ### Task 12: Provider 接口与 OpenAI 兼容客户端
 
 **Files:**
@@ -2102,7 +2106,8 @@ git commit -m "feat(gateway): add deterministic mock provider"
 
 ### Task 14: 网关重试、降级与 health
 
-> 本任务把 scaffold 阶段 health 的临时值替换为真实状态：provider 用短超时探测并记录实测 latency；`embeddingDim` 从 `app_meta` 读取；不要保留 `latencyMs: null` 或硬编码 1024。
+> **执行状态（2026-10-25）**：已完成（提交 `f1e9d92` + `884bbce`）。实现的是 chat/embedding 分离的 primary→fallback→demo 链、按 429/5xx/timeout 分类重试、Abort 立即停止、首 token 后不重试；11 个测试覆盖 fallback、abort、embedding 耗尽与 demo embedding。
+> health 的真实 provider 探测与 `embeddingDim` 改到 Task 33 接线时完成（scaffold 的 `latencyMs: null` 暂时保留）。embedding fallback 必须与主 provider 同 model/dim；当前 app 接线只用 primary embedding。
 
 **Files:**
 - Create: `apps/server/src/gateway/index.ts`
@@ -4305,6 +4310,8 @@ git commit -m "feat(api): add document routes"
 ---
 
 ### Task 33: 错误处理、请求 ID 与 OpenAPI
+
+> 接线 gateway 时同时替换 health 的 scaffold 值：`embeddingDim` 从 `app_meta.embedding_dim` 读取（未建索引时为 null），provider 用短超时探测并记录实测 latency；不要保留 `latencyMs: null`。
 
 **Files:**
 - Create: `apps/server/src/routes/openapi.ts`
