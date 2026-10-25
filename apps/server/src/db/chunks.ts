@@ -16,6 +16,13 @@ export type FtsHit = {
 
 export function insertChunks(db: DatabaseSync, docId: string, chunks: ChunkInput[], vectors: number[][]): void {
   if (vectors.length !== chunks.length) throw new Error('vectors length mismatch');
+  const dim = vectors[0]?.length ?? 0;
+  if (dim <= 0) throw new Error('embedding dimension must be positive');
+  for (const vector of vectors) {
+    if (vector.length !== dim || vector.some((value) => !Number.isFinite(value))) {
+      throw new Error('embedding vectors must have equal finite dimensions');
+    }
+  }
   const now = new Date().toISOString();
   const insertChunk = db.prepare(`INSERT INTO chunks(id,doc_id,ordinal,text,page,sheet,section,start_offset,end_offset,embedding,dim,created_at)
     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`);
@@ -30,7 +37,7 @@ export function insertChunks(db: DatabaseSync, docId: string, chunks: ChunkInput
       insertChunk.run(
         id, docId, chunk.ordinal, chunk.text, chunk.page ?? null, chunk.sheet ?? null,
         chunk.section ?? null, chunk.startOffset ?? null, chunk.endOffset ?? null,
-        buffer, vector.length, now,
+        buffer, dim, now,
       );
       insertFts.run(id, tokenizeForFts(chunk.text));
     });
@@ -49,14 +56,16 @@ export function getChunks(db: DatabaseSync, docId: string): ChunkRecord[] {
 export function searchFts(db: DatabaseSync, query: string, limit: number): FtsHit[] {
   const q = toFtsQuery(query);
   if (!q) return [];
+  const safeLimit = Math.max(1, Math.min(100, Math.trunc(limit)));
   return db.prepare(`SELECT c.id AS chunkId, c.text, c.doc_id AS docId, c.ordinal, c.page, c.sheet, c.section,
       d.name AS docName, bm25(chunks_fts) AS raw
     FROM chunks_fts
     JOIN chunks c ON c.id = chunks_fts.chunk_id
     JOIN documents d ON d.id = c.doc_id
     WHERE chunks_fts MATCH ?
+    -- bm25() is negative; ASC means most relevant first
     ORDER BY raw ASC
-    LIMIT ?`).all(q, limit) as FtsHit[];
+    LIMIT ?`).all(q, safeLimit) as FtsHit[];
 }
 
 export function deleteChunksByDoc(db: DatabaseSync, docId: string): void {
@@ -65,6 +74,10 @@ export function deleteChunksByDoc(db: DatabaseSync, docId: string): void {
 
 function mapChunk(row: Record<string, unknown>): ChunkRecord {
   const buffer = row.embedding as Uint8Array | null;
+  const dim = row.dim == null ? null : Number(row.dim);
+  if (buffer && (buffer.byteLength % 4 !== 0 || (dim !== null && buffer.byteLength !== dim * 4))) {
+    throw new Error('corrupt embedding blob');
+  }
   return {
     id: String(row.id), docId: String(row.doc_id), ordinal: Number(row.ordinal), text: String(row.text),
     page: row.page == null ? undefined : Number(row.page),

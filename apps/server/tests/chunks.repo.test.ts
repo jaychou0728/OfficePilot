@@ -40,4 +40,21 @@ describe('chunks repository', () => {
   it('rejects a vector/chunk count mismatch', () => {
     expect(() => insertChunks(db, docId, [{ ordinal: 0, text: 'x' }], [])).toThrow();
   });
+
+  it('rejects mixed dimensions and non-finite values', () => {
+    expect(() => insertChunks(db, docId, [{ ordinal: 0, text: 'a' }, { ordinal: 1, text: 'b' }], [[1, 0], [1]])).toThrow();
+    expect(() => insertChunks(db, docId, [{ ordinal: 0, text: 'a' }], [[NaN]])).toThrow();
+  });
+
+  it('rolls back the batch on a duplicate ordinal', () => {
+    expect(() => insertChunks(db, docId, [{ ordinal: 0, text: 'a' }, { ordinal: 0, text: 'b' }], [[1], [2]])).toThrow();
+    expect(getChunks(db, docId)).toHaveLength(0);
+    expect(searchFts(db, 'a', 5)).toHaveLength(0);
+  });
+
+  it('rejects a corrupt embedding blob', () => {
+    insertChunks(db, docId, [{ ordinal: 0, text: 'a' }], [[1, 2]]);
+    db.prepare('UPDATE chunks SET embedding=?, dim=? WHERE doc_id=?').run(Buffer.from([1, 2]), 1, docId);
+    expect(() => getChunks(db, docId)).toThrow(/corrupt/);
+  });
 });
