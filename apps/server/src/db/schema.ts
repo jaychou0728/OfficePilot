@@ -41,6 +41,12 @@ CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
   tokenize='unicode61'
 );
 
+CREATE TRIGGER IF NOT EXISTS chunks_after_delete_fts
+AFTER DELETE ON chunks
+BEGIN
+  DELETE FROM chunks_fts WHERE chunk_id = old.id;
+END;
+
 CREATE TABLE IF NOT EXISTS runs(
   id TEXT PRIMARY KEY,
   skill TEXT NOT NULL,
