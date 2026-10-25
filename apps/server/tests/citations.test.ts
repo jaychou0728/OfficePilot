@@ -1,0 +1,43 @@
+import { describe, it, expect } from 'vitest';
+import { validateCitations, confidence } from '../src/validation/citations.js';
+
+const src = (n: number, snippet: string) => ({
+  n, docId: 'd', docName: 'doc', chunkId: `c${n}`, score: 0.9, snippet,
+});
+
+describe('citation validation', () => {
+  it('passes when citations and numbers are grounded', () => {
+    const result = validateCitations('住宿上限为 650 元[1]', [src(1, '住宿费标准为每人每晚不超过 650 元')]);
+    expect(result.ok).toBe(true);
+    expect(result.errors).toEqual([]);
+  });
+
+  it('fails when a number is not in the cited snippet', () => {
+    const result = validateCitations('住宿上限为 900 元[1]', [src(1, '住宿费标准为每人每晚不超过 650 元')]);
+    expect(result.ok).toBe(false);
+    expect(result.errors[0].reason).toContain('900');
+  });
+
+  it('fails when a citation marker has no source', () => {
+    const result = validateCitations('住宿上限为 650 元[2]', [src(1, '住宿上限为 650 元')]);
+    expect(result.ok).toBe(false);
+    expect(result.errors.some((e) => e.field === '[2]')).toBe(true);
+  });
+
+  it('fails when the answer has no citation', () => {
+    const result = validateCitations('住宿上限为 650 元', [src(1, '住宿上限为 650 元')]);
+    expect(result.ok).toBe(false);
+    expect(result.errors.some((e) => e.field === 'citations')).toBe(true);
+  });
+
+  it('normalizes spaces and commas in numeric grounding', () => {
+    const result = validateCitations('预算为 1,200 元[1]', [src(1, '预算 1200 元')]);
+    expect(result.ok).toBe(true);
+  });
+
+  it('computes a bounded confidence', () => {
+    expect(confidence(0.9, 1, true)).toBeCloseTo(0.95, 2);
+    expect(confidence(0, 0, false)).toBe(0);
+    expect(confidence(2, 2, true)).toBe(1);
+  });
+});
